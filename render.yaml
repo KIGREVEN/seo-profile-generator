@@ -5,12 +5,12 @@ services:
     region: frankfurt
     plan: free
     buildCommand: |
-      cd backend &&
-      pip install -r requirements.txt &&
-      cd ../frontend &&
+      pip install -r backend/requirements.txt &&
+      cd frontend &&
       npm install &&
       npm run build &&
-      cp -r dist/* ../backend/src/static/
+      cd .. &&
+      cp -r frontend/dist/* backend/src/static/
     startCommand: cd backend && python src/main.py
     envVars:
       - key: OPENAI_API_KEY
