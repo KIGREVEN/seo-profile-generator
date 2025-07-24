@@ -75,47 +75,37 @@ def get_current_user():
 
 @auth_bp.route('/verify', methods=['GET'])
 def verify_token():
-    """Verify if token is valid"""
+    """Verify if token is valid - simplified version"""
     try:
-        print("=== JWT VERIFY DEBUG START ===")
-        
         # Get token from Authorization header
         auth_header = request.headers.get('Authorization')
-        print(f"Auth header: {auth_header}")
-        
-        if not auth_header:
-            print("ERROR: No authorization header")
-            return jsonify({'error': 'No authorization header'}), 401
-        
-        if not auth_header.startswith('Bearer '):
-            print("ERROR: Invalid authorization header format")
-            return jsonify({'error': 'Invalid authorization header format'}), 401
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Authorization required'}), 401
         
         token = auth_header.split(' ')[1]
-        print(f"Extracted token: {token[:20]}...")
         
-        # Manually decode and verify token
-        from flask_jwt_extended import decode_token
-        print("Attempting to decode token...")
-        decoded_token = decode_token(token)
-        print(f"Decoded token: {decoded_token}")
+        # Simple token verification using JWT
+        import jwt
+        import os
         
-        user_id = decoded_token['sub']
-        print(f"User ID from token: {user_id}")
+        # Decode token with the same secret used to create it
+        secret_key = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-string-change-in-production')
+        decoded = jwt.decode(token, secret_key, algorithms=['HS256'])
+        
+        user_id = decoded.get('sub')
+        if not user_id:
+            return jsonify({'error': 'Invalid token format'}), 401
         
         user = User.query.get(user_id)
-        print(f"User found: {user}")
-        
         if not user:
-            print("ERROR: User not found")
             return jsonify({'error': 'User not found'}), 401
         
-        print("=== JWT VERIFY SUCCESS ===")
         return jsonify({'valid': True, 'user': user.to_dict()}), 200
         
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token has expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
     except Exception as e:
-        print(f"=== JWT VERIFY ERROR: {str(e)} ===")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': f'Token verification failed: {str(e)}'}), 422
+        return jsonify({'error': 'Token verification failed'}), 401
 

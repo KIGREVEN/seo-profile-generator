@@ -182,10 +182,16 @@ def get_results():
         
         token = auth_header.split(' ')[1]
         
-        # Manually decode and verify token
-        from flask_jwt_extended import decode_token
-        decoded_token = decode_token(token)
-        current_user_id = decoded_token['sub']
+        # Simple token verification
+        import jwt
+        import os
+        
+        secret_key = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-string-change-in-production')
+        decoded = jwt.decode(token, secret_key, algorithms=['HS256'])
+        
+        current_user_id = decoded.get('sub')
+        if not current_user_id:
+            return jsonify({'error': 'Invalid token'}), 401
         
         current_user = User.query.get(current_user_id)
         if not current_user:
@@ -225,8 +231,12 @@ def get_results():
             'per_page': per_page
         }), 200
         
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token has expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
     except Exception as e:
-        return jsonify({'error': f'Failed to get results: {str(e)}'}), 422
+        return jsonify({'error': 'Failed to get results'}), 500
 
 @seo_bp.route('/results/<int:result_id>', methods=['GET'])
 @jwt_required()
