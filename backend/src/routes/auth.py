@@ -77,27 +77,45 @@ def get_current_user():
 def verify_token():
     """Verify if token is valid"""
     try:
+        print("=== JWT VERIFY DEBUG START ===")
+        
         # Get token from Authorization header
         auth_header = request.headers.get('Authorization')
+        print(f"Auth header: {auth_header}")
+        
         if not auth_header:
+            print("ERROR: No authorization header")
             return jsonify({'error': 'No authorization header'}), 401
         
         if not auth_header.startswith('Bearer '):
+            print("ERROR: Invalid authorization header format")
             return jsonify({'error': 'Invalid authorization header format'}), 401
         
         token = auth_header.split(' ')[1]
+        print(f"Extracted token: {token[:20]}...")
         
         # Manually decode and verify token
         from flask_jwt_extended import decode_token
+        print("Attempting to decode token...")
         decoded_token = decode_token(token)
+        print(f"Decoded token: {decoded_token}")
+        
         user_id = decoded_token['sub']
+        print(f"User ID from token: {user_id}")
         
         user = User.query.get(user_id)
+        print(f"User found: {user}")
+        
         if not user:
+            print("ERROR: User not found")
             return jsonify({'error': 'User not found'}), 401
         
+        print("=== JWT VERIFY SUCCESS ===")
         return jsonify({'valid': True, 'user': user.to_dict()}), 200
         
     except Exception as e:
+        print(f"=== JWT VERIFY ERROR: {str(e)} ===")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'Token verification failed: {str(e)}'}), 422
 
