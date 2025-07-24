@@ -3,7 +3,7 @@ import sys
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from src.models.user import db
@@ -23,6 +23,19 @@ CORS(app, origins="*")
 
 # Initialize JWT
 jwt = JWTManager(app)
+
+# JWT Error Handlers
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    return jsonify({'error': 'Token has expired'}), 401
+
+@jwt.invalid_token_loader
+def invalid_token_callback(error):
+    return jsonify({'error': f'Invalid token: {error}'}), 422
+
+@jwt.unauthorized_loader
+def missing_token_callback(error):
+    return jsonify({'error': f'Authorization token is required: {error}'}), 401
 
 # Register blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
@@ -44,11 +57,7 @@ with app.app_context():
     from src.models.user import User
     admin_user = User.query.filter_by(username='admin').first()
     if not admin_user:
-        admin_user = User(
-            username='admin',
-            email='admin@example.com',
-            role='admin'
-        )
+        admin_user = User(username='admin', email='admin@example.com', role='admin')
         admin_user.set_password('admin123')
         db.session.add(admin_user)
         db.session.commit()
@@ -56,10 +65,12 @@ with app.app_context():
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
-def serve(path):
+def serve_react_app(path):
+    """Serve React app for all routes"""
     static_folder_path = app.static_folder
+    
     if static_folder_path is None:
-            return "Static folder not configured", 404
+        return "Static folder not configured", 404
 
     if path != "" and os.path.exists(os.path.join(static_folder_path, path)):
         return send_from_directory(static_folder_path, path)
@@ -74,3 +85,4 @@ def serve(path):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
+

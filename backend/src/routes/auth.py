@@ -77,11 +77,14 @@ def get_current_user():
 @jwt_required()
 def verify_token():
     """Verify if token is valid"""
-    current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
-    
-    if not user:
-        return jsonify({'error': 'Invalid token'}), 401
-    
-    return jsonify({'valid': True, 'user': user.to_dict()}), 200
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user:
+            return jsonify({'error': 'Invalid token - user not found'}), 401
+        
+        return jsonify({'valid': True, 'user': user.to_dict()}), 200
+    except Exception as e:
+        return jsonify({'error': f'Token verification failed: {str(e)}'}), 422
 
