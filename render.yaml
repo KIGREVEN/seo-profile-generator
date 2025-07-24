@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: seo-profile-generator
+    env: python
+    region: frankfurt
+    plan: free
+    buildCommand: |
+      cd backend &&
+      pip install -r requirements.txt &&
+      cd ../frontend &&
+      npm install &&
+      npm run build &&
+      cp -r dist/* ../backend/src/static/
+    startCommand: cd backend && python src/main.py
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FLASK_ENV
+        value: production
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: SECRET_KEY
+        generateValue: true
+    healthCheckPath: /
+    autoDeploy: true
+
