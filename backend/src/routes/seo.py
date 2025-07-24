@@ -1,5 +1,4 @@
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, jsonify, request, session
 from src.models.user import User, SEOResult, db
 import openai
 import json
@@ -10,9 +9,16 @@ seo_bp = Blueprint('seo', __name__)
 
 def require_admin():
     """Helper function to check if current user is admin"""
-    current_user_id = get_jwt_identity()
-    current_user = User.query.get(current_user_id)
+    if 'user_id' not in session:
+        return False
+    current_user = User.query.get(session['user_id'])
     return current_user and current_user.role == 'admin'
+
+def get_current_user():
+    """Helper function to get current user from session"""
+    if 'user_id' not in session:
+        return None
+    return User.query.get(session['user_id'])
 
 def normalize_domain(domain):
     """Normalize domain input to ensure consistent format"""
@@ -174,69 +180,48 @@ Bitte analysiere die Website: {domain}"""
 @seo_bp.route('/results', methods=['GET'])
 def get_results():
     """Get SEO results with optional search and filtering"""
-    try:
-        # Get token from Authorization header
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({'error': 'Authorization required'}), 401
-        
-        token = auth_header.split(' ')[1]
-        
-        # Simple token verification
-        import jwt
-        import os
-        
-        secret_key = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-string-change-in-production')
-        decoded = jwt.decode(token, secret_key, algorithms=['HS256'])
-        
-        current_user_id = decoded.get('sub')
-        if not current_user_id:
-            return jsonify({'error': 'Invalid token'}), 401
-        
-        current_user = User.query.get(current_user_id)
-        if not current_user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        # Get query parameters
-        search = request.args.get('search', '').strip()
-        page = int(request.args.get('page', 1))
-        per_page = int(request.args.get('per_page', 10))
-        
-        # Build query
-        query = SEOResult.query
-        
-        # If not admin, only show user's own results
-        if current_user.role != 'admin':
-            query = query.filter_by(user_id=current_user_id)
-        
-        # Apply search filter
-        if search:
-            query = query.filter(SEOResult.domain.contains(search))
-        
-        # Order by creation date (newest first)
-        query = query.order_by(SEOResult.created_at.desc())
-        
-        # Paginate results
-        results = query.paginate(
-            page=page, 
-            per_page=per_page, 
-            error_out=False
-        )
-        
-        return jsonify({
-            'results': [result.to_dict() for result in results.items],
-            'total': results.total,
-            'pages': results.pages,
-            'current_page': page,
-            'per_page': per_page
-        }), 200
-        
-    except jwt.ExpiredSignatureError:
-        return jsonify({'error': 'Token has expired'}), 401
-    except jwt.InvalidTokenError:
-        return jsonify({'error': 'Invalid token'}), 401
-    except Exception as e:
-        return jsonify({'error': 'Failed to get results'}), 500
+    # Check authentication
+    if 'user_id' not in session:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    current_user = User.query.get(session['user_id'])
+    if not current_user:
+        session.clear()  # Clear invalid session
+        return jsonify({'error': 'User not found'}), 401
+    
+    # Get query parameters
+    search = request.args.get('search', '').strip()
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 10))
+    
+    # Build query
+    query = SEOResult.query
+    
+    # If not admin, only show user's own results
+    if current_user.role != 'admin':
+        query = query.filter_by(user_id=current_user.id)
+    
+    # Apply search filter
+    if search:
+        query = query.filter(SEOResult.domain.contains(search))
+    
+    # Order by creation date (newest first)
+    query = query.order_by(SEOResult.created_at.desc())
+    
+    # Paginate results
+    results = query.paginate(
+        page=page, 
+        per_page=per_page, 
+        error_out=False
+    )
+    
+    return jsonify({
+        'results': [result.to_dict() for result in results.items],
+        'total': results.total,
+        'pages': results.pages,
+        'current_page': page,
+        'per_page': per_page
+    }), 200
 
 @seo_bp.route('/results/<int:result_id>', methods=['GET'])
 @jwt_required()

@@ -12,24 +12,20 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
   const API_BASE = '/api';
 
   useEffect(() => {
-    if (token) {
-      verifyToken();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
+    verifySession();
+  }, []);
 
-  const verifyToken = async () => {
+  const verifySession = async () => {
     try {
       const response = await fetch(`${API_BASE}/auth/verify`, {
+        method: 'GET',
+        credentials: 'include', // Include cookies for session
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -38,11 +34,11 @@ export const AuthProvider = ({ children }) => {
         const data = await response.json();
         setUser(data.user);
       } else {
-        logout();
+        setUser(null);
       }
     } catch (error) {
-      console.error('Token verification failed:', error);
-      logout();
+      console.error('Session verification failed:', error);
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -52,6 +48,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
+        credentials: 'include', // Include cookies for session
         headers: {
           'Content-Type': 'application/json',
         },
@@ -61,9 +58,7 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
 
       if (response.ok) {
-        setToken(data.access_token);
         setUser(data.user);
-        localStorage.setItem('token', data.access_token);
         return { success: true };
       } else {
         return { success: false, error: data.error || 'Login failed' };
@@ -74,10 +69,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+    }
   };
 
   const isAdmin = () => {
@@ -86,7 +91,6 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
-    token,
     loading,
     login,
     logout,

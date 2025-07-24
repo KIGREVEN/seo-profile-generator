@@ -1,12 +1,11 @@
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask import Blueprint, jsonify, request, session
 from src.models.user import User, db
 
 auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    """Login endpoint that returns JWT token"""
+    """Login endpoint that creates session"""
     data = request.json
     
     if not data or not data.get('username') or not data.get('password'):
@@ -15,24 +14,25 @@ def login():
     user = User.query.filter_by(username=data['username']).first()
     
     if user and user.check_password(data['password']):
-        access_token = create_access_token(
-            identity=user.id,
-            additional_claims={'role': user.role, 'username': user.username}
-        )
+        # Create session
+        session['user_id'] = user.id
+        session['username'] = user.username
+        session['role'] = user.role
+        
         return jsonify({
-            'access_token': access_token,
+            'message': 'Login successful',
             'user': user.to_dict()
         }), 200
     
     return jsonify({'error': 'Invalid credentials'}), 401
 
 @auth_bp.route('/register', methods=['POST'])
-@jwt_required()
 def register():
     """Register new user (admin only)"""
-    current_user_id = get_jwt_identity()
-    current_user = User.query.get(current_user_id)
+    if 'user_id' not in session:
+        return jsonify({'error': 'Authentication required'}), 401
     
+    current_user = User.query.get(session['user_id'])
     if not current_user or current_user.role != 'admin':
         return jsonify({'error': 'Admin access required'}), 403
     
@@ -62,12 +62,12 @@ def register():
     return jsonify(user.to_dict()), 201
 
 @auth_bp.route('/me', methods=['GET'])
-@jwt_required()
 def get_current_user():
     """Get current user information"""
-    current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    if 'user_id' not in session:
+        return jsonify({'error': 'Authentication required'}), 401
     
+    user = User.query.get(session['user_id'])
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
@@ -75,37 +75,20 @@ def get_current_user():
 
 @auth_bp.route('/verify', methods=['GET'])
 def verify_token():
-    """Verify if token is valid - simplified version"""
-    try:
-        # Get token from Authorization header
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({'error': 'Authorization required'}), 401
-        
-        token = auth_header.split(' ')[1]
-        
-        # Simple token verification using JWT
-        import jwt
-        import os
-        
-        # Decode token with the same secret used to create it
-        secret_key = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-string-change-in-production')
-        decoded = jwt.decode(token, secret_key, algorithms=['HS256'])
-        
-        user_id = decoded.get('sub')
-        if not user_id:
-            return jsonify({'error': 'Invalid token format'}), 401
-        
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 401
-        
-        return jsonify({'valid': True, 'user': user.to_dict()}), 200
-        
-    except jwt.ExpiredSignatureError:
-        return jsonify({'error': 'Token has expired'}), 401
-    except jwt.InvalidTokenError:
-        return jsonify({'error': 'Invalid token'}), 401
-    except Exception as e:
-        return jsonify({'error': 'Token verification failed'}), 401
+    """Verify if session is valid"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    user = User.query.get(session['user_id'])
+    if not user:
+        session.clear()  # Clear invalid session
+        return jsonify({'error': 'User not found'}), 401
+    
+    return jsonify({'valid': True, 'user': user.to_dict()}), 200
+
+@auth_bp.route('/logout', methods=['POST'])
+def logout():
+    """Logout and clear session"""
+    session.clear()
+    return jsonify({'message': 'Logged out successfully'}), 200
 

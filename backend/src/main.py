@@ -5,7 +5,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager
 from src.models.user import db
 from src.routes.user import user_bp
 from src.routes.auth import auth_bp
@@ -15,27 +14,9 @@ app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'sta
 
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-string-change-in-production')
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False  # Tokens don't expire for simplicity
 
-# Enable CORS for all routes
-CORS(app, origins="*")
-
-# Initialize JWT
-jwt = JWTManager(app)
-
-# JWT Error Handlers
-@jwt.expired_token_loader
-def expired_token_callback(jwt_header, jwt_payload):
-    return jsonify({'error': 'Token has expired'}), 401
-
-@jwt.invalid_token_loader
-def invalid_token_callback(error):
-    return jsonify({'error': f'Invalid token: {error}'}), 422
-
-@jwt.unauthorized_loader
-def missing_token_callback(error):
-    return jsonify({'error': f'Authorization token is required: {error}'}), 401
+# Enable CORS for all routes with credentials support
+CORS(app, origins="*", supports_credentials=True)
 
 # Register blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
