@@ -140,7 +140,12 @@ Bitte analysiere die Website: {domain}"""
 
     try:
         # Call OpenAI API
-        client = openai.OpenAI()
+        import os
+        api_key = os.environ.get('OPENAI_API_KEY')
+        if not api_key:
+            return jsonify({'error': 'OpenAI API key not configured'}), 500
+        
+        client = openai.OpenAI(api_key=api_key)
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
@@ -165,7 +170,7 @@ Bitte analysiere die Website: {domain}"""
             opening_hours=parsed_data['opening_hours'],
             company_info=parsed_data['company_info'],
             raw_response=raw_response,
-            user_id=current_user_id
+            user_id=current_user.id
         )
         
         db.session.add(seo_result)
@@ -177,6 +182,9 @@ Bitte analysiere die Website: {domain}"""
         }), 201
         
     except Exception as e:
+        print(f"SEO Analysis Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'Analysis failed: {str(e)}'}), 500
 
 @seo_bp.route('/results', methods=['GET'])
