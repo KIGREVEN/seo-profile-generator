@@ -59,13 +59,15 @@ def parse_seo_response(response_text):
     return result
 
 @seo_bp.route('/analyze', methods=['POST'])
-@jwt_required()
 def analyze_domain():
     """Analyze a domain using OpenAI GPT-4"""
-    current_user_id = get_jwt_identity()
-    current_user = User.query.get(current_user_id)
+    # Check authentication
+    if 'user_id' not in session:
+        return jsonify({'error': 'Authentication required'}), 401
     
+    current_user = User.query.get(session['user_id'])
     if not current_user:
+        session.clear()
         return jsonify({'error': 'User not found'}), 404
     
     data = request.json
@@ -224,25 +226,26 @@ def get_results():
     }), 200
 
 @seo_bp.route('/results/<int:result_id>', methods=['GET'])
-@jwt_required()
 def get_result(result_id):
     """Get specific SEO result"""
-    current_user_id = get_jwt_identity()
-    current_user = User.query.get(current_user_id)
+    # Check authentication
+    if 'user_id' not in session:
+        return jsonify({'error': 'Authentication required'}), 401
     
+    current_user = User.query.get(session['user_id'])
     if not current_user:
+        session.clear()
         return jsonify({'error': 'User not found'}), 404
     
     result = SEOResult.query.get_or_404(result_id)
     
     # Check access permissions
-    if current_user.role != 'admin' and result.user_id != current_user_id:
+    if current_user.role != 'admin' and result.user_id != current_user.id:
         return jsonify({'error': 'Access denied'}), 403
     
     return jsonify(result.to_dict()), 200
 
 @seo_bp.route('/results/<int:result_id>', methods=['DELETE'])
-@jwt_required()
 def delete_result(result_id):
     """Delete SEO result (admin only)"""
     if not require_admin():
