@@ -3,7 +3,10 @@ from src.models.user import User, SEOResult, db
 import openai
 import json
 import re
-from urllib.parse import urlparse
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse, urljoin
+import time
 
 seo_bp = Blueprint('seo', __name__)
 
@@ -19,6 +22,125 @@ def get_current_user():
     if 'user_id' not in session:
         return None
     return User.query.get(session['user_id'])
+
+def crawl_website(url):
+    """Crawl website and extract relevant content"""
+    try:
+        # Ensure URL has protocol
+        if not url.startswith(('http://', 'https://')):
+            url = 'https://' + url
+        
+        # Set headers to mimic a real browser
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
+        
+        # Make request with timeout
+        response = requests.get(url, headers=headers, timeout=10, verify=False)
+        response.raise_for_status()
+        
+        # Parse HTML
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style", "nav", "footer", "header"]):
+            script.decompose()
+        
+        # Extract title
+        title = soup.find('title')
+        title_text = title.get_text().strip() if title else ""
+        
+        # Extract meta description
+        meta_desc = soup.find('meta', attrs={'name': 'description'})
+        meta_description = meta_desc.get('content', '').strip() if meta_desc else ""
+        
+        # Extract main content
+        # Try to find main content areas
+        main_content = ""
+        
+        # Look for main content containers
+        content_selectors = [
+            'main', '[role="main"]', '.main-content', '#main-content',
+            '.content', '#content', '.page-content', '.entry-content',
+            'article', '.article', 'section', '.section'
+        ]
+        
+        for selector in content_selectors:
+            elements = soup.select(selector)
+            if elements:
+                for element in elements[:3]:  # Take first 3 matches
+                    text = element.get_text(separator=' ', strip=True)
+                    if len(text) > 100:  # Only include substantial content
+                        main_content += text + "\n\n"
+                break
+        
+        # If no main content found, extract from body
+        if not main_content:
+            body = soup.find('body')
+            if body:
+                main_content = body.get_text(separator=' ', strip=True)
+        
+        # Clean up text
+        main_content = re.sub(r'\s+', ' ', main_content).strip()
+        
+        # Limit content length to avoid token limits
+        if len(main_content) > 3000:
+            main_content = main_content[:3000] + "..."
+        
+        # Extract contact information
+        contact_info = extract_contact_info(soup)
+        
+        return {
+            'url': url,
+            'title': title_text,
+            'meta_description': meta_description,
+            'content': main_content,
+            'contact_info': contact_info,
+            'success': True
+        }
+        
+    except requests.RequestException as e:
+        return {
+            'url': url,
+            'error': f'Failed to fetch website: {str(e)}',
+            'success': False
+        }
+    except Exception as e:
+        return {
+            'url': url,
+            'error': f'Failed to parse website: {str(e)}',
+            'success': False
+        }
+
+def extract_contact_info(soup):
+    """Extract contact information from website"""
+    contact_info = {}
+    
+    # Look for phone numbers
+    phone_pattern = r'(\+49|0)[0-9\s\-/()]{8,}'
+    text = soup.get_text()
+    phones = re.findall(phone_pattern, text)
+    if phones:
+        contact_info['phone'] = phones[0]
+    
+    # Look for email addresses
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    emails = re.findall(email_pattern, text)
+    if emails:
+        contact_info['email'] = emails[0]
+    
+    # Look for addresses (German format)
+    address_pattern = r'\d{5}\s+[A-Za-zäöüß\s]+'
+    addresses = re.findall(address_pattern, text)
+    if addresses:
+        contact_info['address'] = addresses[0]
+    
+    return contact_info
 
 def normalize_domain(domain):
     """Normalize domain input to ensure consistent format"""
@@ -84,59 +206,55 @@ def analyze_domain():
             'result': existing_result.to_dict()
         }), 200
     
-    # Prepare the GPT prompt
-    prompt = f"""[**ROLLE** Du bist ein erfahrener SEO-Texter und Experte für Google-Unternehmensprofile. **ZIEL** Erstelle eine prägnante, suchmaschinenoptimierte und zugleich kundenfreundliche Unternehmensbeschreibung für ein Google-Unternehmensprofil. Keine Quellenverweise. Es soll ein guter Werbetext sein wie von einem SEO Profi geschrieben.
+    # Crawl the website first
+    print(f"Crawling website: {domain}")
+    crawl_result = crawl_website(domain)
+    
+    if not crawl_result['success']:
+        return jsonify({
+            'error': f'Failed to crawl website: {crawl_result["error"]}'
+        }), 400
+    
+    # Prepare the GPT prompt with real website content
+    prompt = f"""**ROLLE:** Du bist ein erfahrener SEO-Texter und Experte für Google-Unternehmensprofile.
 
---- ### ARBEITSABLAUF — SCHRITT FÜR SCHRITT
-1. **Website-URL anfordern**
-Bitte fordere zunächst die URL der Unternehmenswebsite an, um die benötigten Informationen zu extrahieren.
-2. **Website analysieren**
-Prüfe und notiere:
-• Dienstleistungen / Produkte
-• Alleinstellungsmerkmale (USPs)
-• Zielgruppe
-• Standort
-• Öffnungszeiten
-• Impressumsangaben (Firmenname, Adresse, Geschäftsführer, E-Mail, Telefonnummer, Kontakt, Handelsregister, USt-ID)
-3. **Inhalte aufbereiten**
-– Aktive, klare Sprache; keine Füllwörter.
-– Kundennutzen und Mehrwert deutlich herausstellen.
-– Zehn relevante SEO-Keywords natürlich einbauen (kein Keyword-Stuffing); fehlende Infos mit „[Angabe fehlt]" kennzeichnen.
-– Bei mehreren Standorten jeden Standort separat mit vollständigen Daten aufführen.
-4. **Bilder einbinden**
-– Wähle 1 – 3 aussagekräftige, lizenzfreie Screenshots oder Fotos von der Website (Hero-Bereich, Produkt, Team o. Ä.).
-– Zeige die Bilder direkt im Chat, bevor du die Textabschnitte ausgibst.
-– Verwende ausschließlich eigene Screenshots oder frei nutzbare Bilder.
+**AUFGABE:** Erstelle eine prägnante, suchmaschinenoptimierte Unternehmensbeschreibung für ein Google-Unternehmensprofil basierend auf den ECHTEN Website-Inhalten.
 
---- ### AUSGABESTRUKTUR *(Rein als Klartext, keine Markdown-Syntax verwenden)*
-**BILDER:** [Bild 1] [Bild 2] [Bild 3]
+**WEBSITE-INFORMATIONEN:**
+URL: {crawl_result['url']}
+Titel: {crawl_result['title']}
+Meta-Beschreibung: {crawl_result['meta_description']}
 
+**WEBSITE-INHALT:**
+{crawl_result['content']}
+
+**KONTAKT-INFORMATIONEN:**
+{json.dumps(crawl_result['contact_info'], indent=2)}
+
+**ANWEISUNGEN:**
+1. Analysiere NUR die bereitgestellten Website-Inhalte
+2. Erfinde KEINE Informationen, die nicht auf der Website stehen
+3. Erstelle eine professionelle SEO-optimierte Beschreibung
+4. Verwende natürliche Keywords aus dem Website-Inhalt
+5. Halte die Zeichenlimits ein
+
+**AUSGABEFORMAT:**
 1. **Kurzbeschreibung** (max. 150 Zeichen)
-<Knackige Zusammenfassung des Angebots>
+[Prägnante Zusammenfassung basierend auf echten Website-Inhalten]
 
 2. **Langbeschreibung** (ca. 750 Zeichen)
-<Ausführliche, SEO-optimierte Beschreibung mit USPs, Keywords und Kundennutzen>
+[Ausführliche Beschreibung mit echten USPs und Services von der Website]
 
-3. **Keywords**
-– Keyword 1, Keyword 2, … Keyword 10
+3. **Keywords** (10 relevante Keywords aus dem Website-Inhalt)
+[Keyword 1, Keyword 2, ...]
 
 4. **Öffnungszeiten**
-– Montag–Freitag: <Zeiten>
-– Samstag: <Zeiten>
-– Sonntag: <Zeiten>
+[Falls auf der Website gefunden, sonst: "Nicht auf Website angegeben"]
 
-5. **Impressum**
-Unternehmen: <Firmenname>
-Adresse: <Straße, PLZ, Stadt>
-Geschäftsführer: <n>
-Kontakt: <Telefon, E-Mail>
+5. **Kontaktinformationen**
+[Echte Kontaktdaten von der Website oder "Nicht verfügbar"]
 
---- ### HINWEISE
-* Keine Quellenangaben, Fußnoten, URLs oder sonstige Verweise im Text.
-* Zeichenlimits strikt einhalten.
-* Qualität vor Quantität: klare, informative und überzeugende Formulierungen.
-
-Bitte analysiere die Website: {domain}"""
+**WICHTIG:** Verwende ausschließlich Informationen, die tatsächlich auf der Website stehen!"""
 
     try:
         # Call OpenAI API
