@@ -74,17 +74,30 @@ def get_current_user():
     return jsonify(user.to_dict()), 200
 
 @auth_bp.route('/verify', methods=['GET'])
-@jwt_required()
 def verify_token():
     """Verify if token is valid"""
     try:
-        current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        # Get token from Authorization header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({'error': 'No authorization header'}), 401
         
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Invalid authorization header format'}), 401
+        
+        token = auth_header.split(' ')[1]
+        
+        # Manually decode and verify token
+        from flask_jwt_extended import decode_token
+        decoded_token = decode_token(token)
+        user_id = decoded_token['sub']
+        
+        user = User.query.get(user_id)
         if not user:
-            return jsonify({'error': 'Invalid token - user not found'}), 401
+            return jsonify({'error': 'User not found'}), 401
         
         return jsonify({'valid': True, 'user': user.to_dict()}), 200
+        
     except Exception as e:
         return jsonify({'error': f'Token verification failed: {str(e)}'}), 422
 

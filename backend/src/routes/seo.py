@@ -172,48 +172,61 @@ Bitte analysiere die Website: {domain}"""
         return jsonify({'error': f'Analysis failed: {str(e)}'}), 500
 
 @seo_bp.route('/results', methods=['GET'])
-@jwt_required()
 def get_results():
     """Get SEO results with optional search and filtering"""
-    current_user_id = get_jwt_identity()
-    current_user = User.query.get(current_user_id)
-    
-    if not current_user:
-        return jsonify({'error': 'User not found'}), 404
-    
-    # Get query parameters
-    search = request.args.get('search', '').strip()
-    page = int(request.args.get('page', 1))
-    per_page = int(request.args.get('per_page', 10))
-    
-    # Build query
-    query = SEOResult.query
-    
-    # If not admin, only show user's own results
-    if current_user.role != 'admin':
-        query = query.filter_by(user_id=current_user_id)
-    
-    # Apply search filter
-    if search:
-        query = query.filter(SEOResult.domain.contains(search))
-    
-    # Order by creation date (newest first)
-    query = query.order_by(SEOResult.created_at.desc())
-    
-    # Paginate results
-    results = query.paginate(
-        page=page, 
-        per_page=per_page, 
-        error_out=False
-    )
-    
-    return jsonify({
-        'results': [result.to_dict() for result in results.items],
-        'total': results.total,
-        'pages': results.pages,
-        'current_page': page,
-        'per_page': per_page
-    }), 200
+    try:
+        # Get token from Authorization header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Authorization required'}), 401
+        
+        token = auth_header.split(' ')[1]
+        
+        # Manually decode and verify token
+        from flask_jwt_extended import decode_token
+        decoded_token = decode_token(token)
+        current_user_id = decoded_token['sub']
+        
+        current_user = User.query.get(current_user_id)
+        if not current_user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get query parameters
+        search = request.args.get('search', '').strip()
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        
+        # Build query
+        query = SEOResult.query
+        
+        # If not admin, only show user's own results
+        if current_user.role != 'admin':
+            query = query.filter_by(user_id=current_user_id)
+        
+        # Apply search filter
+        if search:
+            query = query.filter(SEOResult.domain.contains(search))
+        
+        # Order by creation date (newest first)
+        query = query.order_by(SEOResult.created_at.desc())
+        
+        # Paginate results
+        results = query.paginate(
+            page=page, 
+            per_page=per_page, 
+            error_out=False
+        )
+        
+        return jsonify({
+            'results': [result.to_dict() for result in results.items],
+            'total': results.total,
+            'pages': results.pages,
+            'current_page': page,
+            'per_page': per_page
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to get results: {str(e)}'}), 422
 
 @seo_bp.route('/results/<int:result_id>', methods=['GET'])
 @jwt_required()
