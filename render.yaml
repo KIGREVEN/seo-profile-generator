@@ -11,7 +11,7 @@ services:
       npm run build &&
       cd .. &&
       cp -r frontend/dist/* backend/src/static/
-    startCommand: cd backend && python src/main.py
+    startCommand: python backend/src/main.py
     envVars:
       - key: OPENAI_API_KEY
         sync: false
