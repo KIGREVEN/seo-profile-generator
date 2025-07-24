@@ -1,17 +1,16 @@
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, jsonify, request, session
 from src.models.user import User, db
 
 user_bp = Blueprint('user', __name__)
 
 def require_admin():
     """Helper function to check if current user is admin"""
-    current_user_id = get_jwt_identity()
-    current_user = User.query.get(current_user_id)
+    if 'user_id' not in session:
+        return False
+    current_user = User.query.get(session['user_id'])
     return current_user and current_user.role == 'admin'
 
 @user_bp.route('/users', methods=['GET'])
-@jwt_required()
 def get_users():
     """Get all users (admin only)"""
     if not require_admin():
@@ -21,7 +20,6 @@ def get_users():
     return jsonify([user.to_dict() for user in users])
 
 @user_bp.route('/users', methods=['POST'])
-@jwt_required()
 def create_user():
     """Create new user (admin only)"""
     if not require_admin():
@@ -51,7 +49,6 @@ def create_user():
     return jsonify(user.to_dict()), 201
 
 @user_bp.route('/users/<int:user_id>', methods=['GET'])
-@jwt_required()
 def get_user(user_id):
     """Get specific user (admin only)"""
     if not require_admin():
@@ -61,7 +58,6 @@ def get_user(user_id):
     return jsonify(user.to_dict())
 
 @user_bp.route('/users/<int:user_id>', methods=['PUT'])
-@jwt_required()
 def update_user(user_id):
     """Update user (admin only)"""
     if not require_admin():
@@ -91,7 +87,6 @@ def update_user(user_id):
     return jsonify(user.to_dict())
 
 @user_bp.route('/users/<int:user_id>', methods=['DELETE'])
-@jwt_required()
 def delete_user(user_id):
     """Delete user (admin only)"""
     if not require_admin():

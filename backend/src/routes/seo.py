@@ -258,13 +258,15 @@ def delete_result(result_id):
     return '', 204
 
 @seo_bp.route('/domains/autocomplete', methods=['GET'])
-@jwt_required()
 def autocomplete_domains():
     """Get domain suggestions for autocomplete"""
-    current_user_id = get_jwt_identity()
-    current_user = User.query.get(current_user_id)
+    # Check authentication
+    if 'user_id' not in session:
+        return jsonify({'error': 'Authentication required'}), 401
     
+    current_user = User.query.get(session['user_id'])
     if not current_user:
+        session.clear()
         return jsonify({'error': 'User not found'}), 404
     
     search = request.args.get('q', '').strip()
