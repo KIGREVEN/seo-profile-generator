@@ -94,17 +94,38 @@ def generate_image():
             )
             
             print(f"OpenAI API Response: {response}")
+            print(f"Response type: {type(response)}")
+            print(f"Response data: {response.data if hasattr(response, 'data') else 'No data attribute'}")
             
-            # Get the image URL with better error handling
-            if response and response.data and len(response.data) > 0:
-                image_url = response.data[0].url
-                print(f"Generated image URL: {image_url}")
+            # Get the image URL with better error handling and debugging
+            if response and hasattr(response, 'data') and response.data and len(response.data) > 0:
+                first_item = response.data[0]
+                print(f"First data item: {first_item}")
+                print(f"First item type: {type(first_item)}")
+                print(f"First item attributes: {dir(first_item)}")
+                
+                # Try different possible URL attributes for gpt-image-1
+                image_url = None
+                if hasattr(first_item, 'url'):
+                    image_url = first_item.url
+                    print(f"Found URL via .url: {image_url}")
+                elif hasattr(first_item, 'image_url'):
+                    image_url = first_item.image_url
+                    print(f"Found URL via .image_url: {image_url}")
+                elif hasattr(first_item, 'b64_json'):
+                    print("Found b64_json instead of URL - this might be base64 encoded")
+                    # Handle base64 encoded images if needed
+                else:
+                    print(f"No URL attribute found. Available attributes: {[attr for attr in dir(first_item) if not attr.startswith('_')]}")
                 
                 if not image_url:
                     print("ERROR: Image URL is None or empty")
                     return jsonify({'error': 'Image generation failed: No URL returned'}), 500
             else:
                 print("ERROR: Invalid response structure from OpenAI API")
+                print(f"Response has data: {hasattr(response, 'data')}")
+                if hasattr(response, 'data'):
+                    print(f"Data length: {len(response.data) if response.data else 'Data is None'}")
                 return jsonify({'error': 'Image generation failed: Invalid API response'}), 500
             
         except Exception as openai_error:
