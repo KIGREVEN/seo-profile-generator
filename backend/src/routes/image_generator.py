@@ -1,4 +1,6 @@
 import os
+import base64
+import uuid
 import openai
 from flask import Blueprint, request, jsonify, session
 from src.models.user import db, User
@@ -8,6 +10,29 @@ image_bp = Blueprint('image', __name__)
 
 # OpenAI API configuration
 openai.api_key = os.environ.get('OPENAI_API_KEY')
+
+def save_base64_image(b64_string, image_type):
+    """Convert base64 string to image file and return file path"""
+    try:
+        # Create uploads directory if it doesn't exist
+        upload_dir = os.path.join(os.getcwd(), 'static', 'uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Generate unique filename
+        filename = f"{image_type}_{uuid.uuid4().hex}.png"
+        file_path = os.path.join(upload_dir, filename)
+        
+        # Decode base64 and save to file
+        image_data = base64.b64decode(b64_string)
+        with open(file_path, 'wb') as f:
+            f.write(image_data)
+        
+        # Return relative URL for database storage
+        return f"/static/uploads/{filename}"
+        
+    except Exception as e:
+        print(f"Error saving base64 image: {str(e)}")
+        return None
 
 def get_current_user():
     """Get current user from session"""
@@ -90,37 +115,36 @@ def generate_image():
                 prompt=prompt,
                 size=size,
                 quality="high",  # gpt-image-1 supports quality parameter
-                n=1
+                n=1,
+                response_format="b64_json"  # Request base64 format explicitly
             )
             
             print(f"OpenAI API Response: {response}")
             print(f"Response type: {type(response)}")
             print(f"Response data: {response.data if hasattr(response, 'data') else 'No data attribute'}")
             
-            # Get the image URL with better error handling and debugging
+            # Process the base64 image response
             if response and hasattr(response, 'data') and response.data and len(response.data) > 0:
                 first_item = response.data[0]
                 print(f"First data item: {first_item}")
                 print(f"First item type: {type(first_item)}")
-                print(f"First item attributes: {dir(first_item)}")
+                print(f"First item attributes: {[attr for attr in dir(first_item) if not attr.startswith('_')]}")
                 
-                # Try different possible URL attributes for gpt-image-1
-                image_url = None
-                if hasattr(first_item, 'url'):
+                # Handle base64 response from gpt-image-1
+                if hasattr(first_item, 'b64_json') and first_item.b64_json:
+                    print("Processing base64 image from gpt-image-1")
+                    image_url = save_base64_image(first_item.b64_json, image_type)
+                    if not image_url:
+                        return jsonify({'error': 'Failed to save base64 image'}), 500
+                    print(f"Base64 image saved to: {image_url}")
+                elif hasattr(first_item, 'url') and first_item.url:
+                    # Fallback for URL response (shouldn't happen with b64_json format)
                     image_url = first_item.url
-                    print(f"Found URL via .url: {image_url}")
-                elif hasattr(first_item, 'image_url'):
-                    image_url = first_item.image_url
-                    print(f"Found URL via .image_url: {image_url}")
-                elif hasattr(first_item, 'b64_json'):
-                    print("Found b64_json instead of URL - this might be base64 encoded")
-                    # Handle base64 encoded images if needed
+                    print(f"Found URL (unexpected): {image_url}")
                 else:
-                    print(f"No URL attribute found. Available attributes: {[attr for attr in dir(first_item) if not attr.startswith('_')]}")
+                    print(f"No usable image data found. Available attributes: {[attr for attr in dir(first_item) if not attr.startswith('_')]}")
+                    return jsonify({'error': 'Image generation failed: No usable image data returned'}), 500
                 
-                if not image_url:
-                    print("ERROR: Image URL is None or empty")
-                    return jsonify({'error': 'Image generation failed: No URL returned'}), 500
             else:
                 print("ERROR: Invalid response structure from OpenAI API")
                 print(f"Response has data: {hasattr(response, 'data')}")
