@@ -21,20 +21,21 @@ def build_prompt(user_input, image_type):
     # Base prompt template
     base_prompt = "professional photography, ultra-realistic, 4K UHD resolution, shallow depth of field, soft natural lighting, high dynamic range, sharp focus, bokeh background, cinematic composition, wide aspect ratio"
     
-    # Format-specific settings
+    # Format-specific settings for gpt-image-1 model
+    # Supported sizes: '1024x1024', '1024x1536', '1536x1024', and 'auto'
     if image_type == 'header':
         format_ratio = "(16:9)"
         format_text = "web header format"
-        size = "1792x1024"
+        size = "1536x1024"  # Changed from 1792x1024 to supported size
     elif image_type == 'kachel':
         format_ratio = "(4:3)"
         format_text = "editorial layout"
-        size = "1024x768"
+        size = "1024x1024"  # Changed from 1024x768 to supported size (closest to 4:3)
     else:
         # Fallback
         format_ratio = "(16:9)"
         format_text = "web header format"
-        size = "1792x1024"
+        size = "1536x1024"  # Changed from 1792x1024 to supported size
     
     # Build complete prompt
     complete_prompt = f"{base_prompt} {format_ratio}, {format_text}, color graded like editorial magazine, taken with DSLR or mirrorless camera (Canon EOS R5 / Sony A7R IV), {user_input}"
