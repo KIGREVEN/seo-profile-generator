@@ -49,6 +49,12 @@ with app.app_context():
         db.session.commit()
         print("Default admin user created: admin/admin123")
 
+@app.route('/static/uploads/<filename>')
+def serve_uploaded_file(filename):
+    """Serve uploaded images"""
+    uploads_dir = os.path.join(os.getcwd(), 'static', 'uploads')
+    return send_from_directory(uploads_dir, filename)
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_react_app(path):
