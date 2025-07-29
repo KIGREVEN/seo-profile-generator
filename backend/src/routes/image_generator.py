@@ -115,8 +115,8 @@ def generate_image():
                 prompt=prompt,
                 size=size,
                 quality="high",  # gpt-image-1 supports quality parameter
-                n=1,
-                response_format="b64_json"  # Request base64 format explicitly
+                n=1
+                # Note: response_format is not supported by gpt-image-1
             )
             
             print(f"OpenAI API Response: {response}")
