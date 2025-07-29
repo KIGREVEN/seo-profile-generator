@@ -80,12 +80,12 @@ def generate_image():
         print(f"Prompt: {prompt}")
         print(f"=== END DEBUG ===")
         
-        # Generate image using OpenAI DALL-E
+        # Generate image using OpenAI gpt-image-1
         try:
             client = openai.OpenAI(api_key=openai.api_key)
             
             response = client.images.generate(
-                model="dall-e-3",  # Use DALL-E 3 for best quality
+                model="gpt-image-1",  # Use gpt-image-1 as requested
                 prompt=prompt,
                 size=size,
                 quality="standard",
