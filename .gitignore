@@ -141,10 +141,12 @@ coverage/
 # Screenshots and media
 screenshots/
 *.webp
-*.png
 *.jpg
 *.jpeg
 *.gif
+
+# Allow logo files
+!frontend/src/assets/*.png
 
 # Backup files
 *.bak
