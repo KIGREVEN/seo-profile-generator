@@ -88,7 +88,7 @@ def generate_image():
                 model="gpt-image-1",  # Use gpt-image-1 as requested
                 prompt=prompt,
                 size=size,
-                quality="standard",
+                quality="high",  # Changed from "standard" to "high" for gpt-image-1
                 n=1
             )
             
