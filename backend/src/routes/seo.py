@@ -47,8 +47,8 @@ def crawl_website(url):
         # Parse HTML
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Remove script and style elements
-        for script in soup(["script", "style", "nav", "footer", "header"]):
+        # Remove only script and style elements (keep footer for opening hours!)
+        for script in soup(["script", "style"]):
             script.decompose()
         
         # Extract title
@@ -85,22 +85,37 @@ def crawl_website(url):
             if body:
                 main_content = body.get_text(separator=' ', strip=True)
         
+        # Extract footer content separately (important for opening hours!)
+        footer_content = ""
+        footer_elements = soup.find_all(['footer', '.footer', '#footer', '.site-footer'])
+        for footer in footer_elements:
+            footer_text = footer.get_text(separator=' ', strip=True)
+            if len(footer_text) > 20:  # Only substantial footer content
+                footer_content += footer_text + "\n\n"
+        
+        # Combine main content with footer
+        full_content = main_content
+        if footer_content:
+            full_content += "\n\n=== FOOTER-INFORMATIONEN ===\n" + footer_content
+        
         # Clean up text
-        main_content = re.sub(r'\s+', ' ', main_content).strip()
+        full_content = re.sub(r'\s+', ' ', full_content).strip()
         
         # Limit content length to avoid token limits
-        if len(main_content) > 3000:
-            main_content = main_content[:3000] + "..."
+        if len(full_content) > 4000:
+            full_content = full_content[:4000] + "..."
         
-        # Extract contact information
+        # Extract contact information and opening hours
         contact_info = extract_contact_info(soup)
+        opening_hours = extract_opening_hours(soup)
         
         return {
             'url': url,
             'title': title_text,
             'meta_description': meta_description,
-            'content': main_content,
+            'content': full_content,
             'contact_info': contact_info,
+            'opening_hours': opening_hours,
             'success': True
         }
         
@@ -141,6 +156,104 @@ def extract_contact_info(soup):
         contact_info['address'] = addresses[0]
     
     return contact_info
+
+def extract_opening_hours(soup):
+    """Extract opening hours from website with comprehensive patterns"""
+    opening_hours = {}
+    
+    # Get all text from the page
+    full_text = soup.get_text()
+    
+    # German day names and their variations
+    day_patterns = {
+        'montag': ['montag', 'mo', 'mon'],
+        'dienstag': ['dienstag', 'di', 'die', 'tue'],
+        'mittwoch': ['mittwoch', 'mi', 'mit', 'wed'],
+        'donnerstag': ['donnerstag', 'do', 'don', 'thu'],
+        'freitag': ['freitag', 'fr', 'fre', 'fri'],
+        'samstag': ['samstag', 'sa', 'sam', 'sat'],
+        'sonntag': ['sonntag', 'so', 'son', 'sun']
+    }
+    
+    # Time patterns
+    time_patterns = [
+        r'(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})',  # 09:00 - 18:00
+        r'(\d{1,2})\.(\d{2})\s*-\s*(\d{1,2})\.(\d{2})',  # 09.00 - 18.00
+        r'(\d{1,2})\s*-\s*(\d{1,2})\s*Uhr',  # 9 - 18 Uhr
+        r'(\d{1,2}):(\d{2})\s*bis\s*(\d{1,2}):(\d{2})',  # 09:00 bis 18:00
+        r'(\d{1,2})\s*bis\s*(\d{1,2})\s*Uhr',  # 9 bis 18 Uhr
+    ]
+    
+    # Look for opening hours keywords
+    opening_keywords = [
+        'öffnungszeiten', 'opening hours', 'geschäftszeiten', 'servicezeiten',
+        'sprechzeiten', 'bürozeiten', 'arbeitszeiten', 'zeiten'
+    ]
+    
+    # Split text into lines for better parsing
+    lines = full_text.lower().split('\n')
+    
+    # Find sections that might contain opening hours
+    relevant_sections = []
+    for i, line in enumerate(lines):
+        if any(keyword in line for keyword in opening_keywords):
+            # Include surrounding lines
+            start = max(0, i - 2)
+            end = min(len(lines), i + 10)
+            relevant_sections.extend(lines[start:end])
+    
+    # If no specific sections found, search in footer and contact areas
+    if not relevant_sections:
+        footer_elements = soup.find_all(['footer', '.footer', '#footer', '.contact', '.kontakt'])
+        for element in footer_elements:
+            relevant_sections.extend(element.get_text().lower().split('\n'))
+    
+    # Parse opening hours from relevant sections
+    for line in relevant_sections:
+        line = line.strip()
+        if len(line) < 5:  # Skip very short lines
+            continue
+            
+        # Check each day
+        for day_name, variations in day_patterns.items():
+            for variation in variations:
+                if variation in line:
+                    # Look for time patterns in this line
+                    for pattern in time_patterns:
+                        matches = re.findall(pattern, line)
+                        if matches:
+                            # Format the time nicely
+                            match = matches[0]
+                            if len(match) == 4:  # Full time format
+                                time_str = f"{match[0]}:{match[1]} - {match[2]}:{match[3]}"
+                            elif len(match) == 2:  # Simple hour format
+                                time_str = f"{match[0]}:00 - {match[1]}:00"
+                            else:
+                                time_str = line.strip()
+                            
+                            opening_hours[day_name] = time_str
+                            break
+                    
+                    # Also check for "geschlossen" or "closed"
+                    if any(word in line for word in ['geschlossen', 'closed', 'zu']):
+                        opening_hours[day_name] = 'Geschlossen'
+    
+    # Look for common patterns like "Mo-Fr: 9-18"
+    range_pattern = r'(mo|montag)[\s\-]*(fr|freitag)[\s:]*(\d{1,2}):?(\d{0,2})[\s\-]*(\d{1,2}):?(\d{0,2})'
+    for line in relevant_sections:
+        match = re.search(range_pattern, line, re.IGNORECASE)
+        if match:
+            start_hour = match.group(3)
+            start_min = match.group(4) or '00'
+            end_hour = match.group(5)
+            end_min = match.group(6) or '00'
+            time_str = f"{start_hour}:{start_min} - {end_hour}:{end_min}"
+            
+            for day in ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag']:
+                if day not in opening_hours:
+                    opening_hours[day] = time_str
+    
+    return opening_hours
 
 def normalize_domain(domain):
     """Normalize domain input to ensure consistent format"""
@@ -231,12 +344,16 @@ Meta-Beschreibung: {crawl_result['meta_description']}
 **KONTAKT-INFORMATIONEN:**
 {json.dumps(crawl_result['contact_info'], indent=2)}
 
+**GEFUNDENE ÖFFNUNGSZEITEN:**
+{json.dumps(crawl_result['opening_hours'], indent=2)}
+
 **ANWEISUNGEN:**
 1. Analysiere NUR die bereitgestellten Website-Inhalte
 2. Erfinde KEINE Informationen, die nicht auf der Website stehen
 3. Erstelle eine professionelle SEO-optimierte Beschreibung
 4. Verwende natürliche Keywords aus dem Website-Inhalt
 5. Halte die Zeichenlimits ein
+6. Nutze die gefundenen Öffnungszeiten, falls vorhanden
 
 **AUSGABEFORMAT:**
 1. **Kurzbeschreibung** (max. 150 Zeichen)
@@ -249,7 +366,7 @@ Meta-Beschreibung: {crawl_result['meta_description']}
 [Keyword 1, Keyword 2, ...]
 
 4. **Öffnungszeiten**
-[Falls auf der Website gefunden, sonst: "Nicht auf Website angegeben"]
+[Verwende die gefundenen Öffnungszeiten oder "Nicht auf Website angegeben"]
 
 5. **Kontaktinformationen**
 [Echte Kontaktdaten von der Website oder "Nicht verfügbar"]
