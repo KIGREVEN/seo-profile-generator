@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut, User, Shield } from 'lucide-react';
+import grevenLogo from '../assets/logo_greven.png';
 
 const Header = () => {
   const { user, logout, isAdmin } = useAuth();
@@ -11,15 +12,14 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)'}}>
-                <div className="w-3 h-3 bg-white rounded-full"></div>
-              </div>
+            <div className="flex items-center space-x-3">
+              <img 
+                src={grevenLogo} 
+                alt="Greven Medien Logo" 
+                className="h-10 w-auto"
+              />
               <div>
-                <h1 className="text-2xl font-bold" style={{color: '#7ED321'}}>
-                  GREVEN
-                </h1>
-                <p className="text-xs text-gray-500 -mt-1">Content Generator</p>
+                <p className="text-sm text-gray-500 font-medium">Content Generator</p>
               </div>
             </div>
           </div>
