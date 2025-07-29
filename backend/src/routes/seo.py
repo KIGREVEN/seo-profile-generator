@@ -238,20 +238,74 @@ def extract_opening_hours(soup):
                     if any(word in line for word in ['geschlossen', 'closed', 'zu']):
                         opening_hours[day_name] = 'Geschlossen'
     
-    # Look for common patterns like "Mo-Fr: 9-18"
-    range_pattern = r'(mo|montag)[\s\-]*(fr|freitag)[\s:]*(\d{1,2}):?(\d{0,2})[\s\-]*(\d{1,2}):?(\d{0,2})'
+    # Look for common patterns like "Mo-Fr: 9-18" and "Mo - Fr: 9:00 - 17:00"
+    range_patterns = [
+        # Mo - Fr: 9:00 - 17:00
+        r'(mo|montag)[\s\-]+(fr|freitag)[\s:]*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})',
+        # Mo-Fr: 9-18
+        r'(mo|montag)[\s\-]+(fr|freitag)[\s:]*(\d{1,2})[\s\-]+(\d{1,2})',
+        # Sa - So: Geschlossen
+        r'(sa|samstag)[\s\-]+(so|sonntag)[\s:]*geschlossen',
+        # Mo - Fr 9:00 - 17:00 (without colon)
+        r'(mo|montag)[\s\-]+(fr|freitag)\s+(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})',
+    ]
+    
     for line in relevant_sections:
-        match = re.search(range_pattern, line, re.IGNORECASE)
-        if match:
-            start_hour = match.group(3)
-            start_min = match.group(4) or '00'
-            end_hour = match.group(5)
-            end_min = match.group(6) or '00'
-            time_str = f"{start_hour}:{start_min} - {end_hour}:{end_min}"
-            
-            for day in ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag']:
-                if day not in opening_hours:
-                    opening_hours[day] = time_str
+        # Check for weekday ranges
+        for pattern in range_patterns:
+            match = re.search(pattern, line, re.IGNORECASE)
+            if match:
+                if 'geschlossen' in line.lower():
+                    # Weekend closed
+                    for day in ['samstag', 'sonntag']:
+                        if day not in opening_hours:
+                            opening_hours[day] = 'Geschlossen'
+                else:
+                    # Weekday hours
+                    groups = match.groups()
+                    if len(groups) >= 6:  # Full time format with minutes
+                        start_hour = groups[2]
+                        start_min = groups[3]
+                        end_hour = groups[4]
+                        end_min = groups[5]
+                        time_str = f"{start_hour}:{start_min} - {end_hour}:{end_min}"
+                    elif len(groups) >= 4:  # Simple hour format
+                        start_hour = groups[2]
+                        end_hour = groups[3]
+                        time_str = f"{start_hour}:00 - {end_hour}:00"
+                    else:
+                        continue
+                    
+                    # Apply to weekdays
+                    for day in ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag']:
+                        if day not in opening_hours:
+                            opening_hours[day] = time_str
+    
+    # Additional specific patterns for the format seen in the screenshot
+    # Look for "Mo - Fr" followed by time, and "Sa - So" followed by "Geschlossen"
+    mo_fr_pattern = r'mo[\s\-]+fr[\s:]*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})'
+    sa_so_pattern = r'sa[\s\-]+so[\s:]*geschlossen'
+    
+    full_text_lower = full_text.lower()
+    
+    # Check for Mo - Fr pattern
+    mo_fr_match = re.search(mo_fr_pattern, full_text_lower)
+    if mo_fr_match:
+        start_hour = mo_fr_match.group(1)
+        start_min = mo_fr_match.group(2)
+        end_hour = mo_fr_match.group(3)
+        end_min = mo_fr_match.group(4)
+        time_str = f"{start_hour}:{start_min} - {end_hour}:{end_min}"
+        
+        for day in ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag']:
+            if day not in opening_hours:
+                opening_hours[day] = time_str
+    
+    # Check for Sa - So pattern
+    if re.search(sa_so_pattern, full_text_lower):
+        for day in ['samstag', 'sonntag']:
+            if day not in opening_hours:
+                opening_hours[day] = 'Geschlossen'
     
     return opening_hours
 
