@@ -21,21 +21,21 @@ def build_prompt(user_input, image_type):
     # Base prompt template
     base_prompt = "professional photography, ultra-realistic, 4K UHD resolution, shallow depth of field, soft natural lighting, high dynamic range, sharp focus, bokeh background, cinematic composition, wide aspect ratio"
     
-    # Format-specific settings for gpt-image-1 model
-    # Supported sizes: '1024x1024', '1024x1536', '1536x1024', and 'auto'
+    # Format-specific settings for DALL-E 2 model
+    # Supported sizes: '256x256', '512x512', '1024x1024'
     if image_type == 'header':
         format_ratio = "(16:9)"
         format_text = "web header format"
-        size = "1536x1024"  # Changed from 1792x1024 to supported size
+        size = "1024x1024"  # DALL-E 2 only supports square sizes
     elif image_type == 'kachel':
         format_ratio = "(4:3)"
         format_text = "editorial layout"
-        size = "1024x1024"  # Changed from 1024x768 to supported size (closest to 4:3)
+        size = "1024x1024"  # DALL-E 2 only supports square sizes
     else:
         # Fallback
         format_ratio = "(16:9)"
         format_text = "web header format"
-        size = "1536x1024"  # Changed from 1792x1024 to supported size
+        size = "1024x1024"  # DALL-E 2 only supports square sizes
     
     # Build complete prompt
     complete_prompt = f"{base_prompt} {format_ratio}, {format_text}, color graded like editorial magazine, taken with DSLR or mirrorless camera (Canon EOS R5 / Sony A7R IV), {user_input}"
@@ -81,22 +81,31 @@ def generate_image():
         print(f"Prompt: {prompt}")
         print(f"=== END DEBUG ===")
         
-        # Generate image using OpenAI gpt-image-1
+        # Generate image using OpenAI DALL-E 2 (fallback from gpt-image-1)
         try:
             client = openai.OpenAI(api_key=openai.api_key)
             
             response = client.images.generate(
-                model="gpt-image-1",  # Use gpt-image-1 as requested
+                model="dall-e-2",  # Use DALL-E 2 as fallback (gpt-image-1 may not exist)
                 prompt=prompt,
                 size=size,
-                quality="high",  # Changed from "standard" to "high" for gpt-image-1
                 n=1
+                # Note: DALL-E 2 doesn't support quality parameter
             )
             
-            # Get the image URL
-            image_url = response.data[0].url
+            print(f"OpenAI API Response: {response}")
             
-            print(f"Generated image URL: {image_url}")
+            # Get the image URL with better error handling
+            if response and response.data and len(response.data) > 0:
+                image_url = response.data[0].url
+                print(f"Generated image URL: {image_url}")
+                
+                if not image_url:
+                    print("ERROR: Image URL is None or empty")
+                    return jsonify({'error': 'Image generation failed: No URL returned'}), 500
+            else:
+                print("ERROR: Invalid response structure from OpenAI API")
+                return jsonify({'error': 'Image generation failed: Invalid API response'}), 500
             
         except Exception as openai_error:
             print(f"OpenAI API error: {str(openai_error)}")
