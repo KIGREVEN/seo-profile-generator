@@ -182,6 +182,8 @@ def extract_opening_hours(soup):
         r'(\d{1,2})\s*-\s*(\d{1,2})\s*Uhr',  # 9 - 18 Uhr
         r'(\d{1,2}):(\d{2})\s*bis\s*(\d{1,2}):(\d{2})',  # 09:00 bis 18:00
         r'(\d{1,2})\s*bis\s*(\d{1,2})\s*Uhr',  # 9 bis 18 Uhr
+        # Multiple time ranges with & or und
+        r'(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*(?:Uhr\s*)?[&und]+\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*Uhr?',  # 10:00 - 13:00 Uhr & 14:00 - 18:00 Uhr
     ]
     
     # Look for opening hours keywords
@@ -224,7 +226,9 @@ def extract_opening_hours(soup):
                         if matches:
                             # Format the time nicely
                             match = matches[0]
-                            if len(match) == 4:  # Full time format
+                            if len(match) == 8:  # Multiple time ranges (10:00-13:00 & 14:00-18:00)
+                                time_str = f"{match[0]}:{match[1]} - {match[2]}:{match[3]} & {match[4]}:{match[5]} - {match[6]}:{match[7]}"
+                            elif len(match) == 4:  # Full time format
                                 time_str = f"{match[0]}:{match[1]} - {match[2]}:{match[3]}"
                             elif len(match) == 2:  # Simple hour format
                                 time_str = f"{match[0]}:00 - {match[1]}:00"
@@ -286,20 +290,41 @@ def extract_opening_hours(soup):
     mo_fr_pattern = r'mo[\s\-]+fr[\s:]*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})'
     sa_so_pattern = r'sa[\s\-]+so[\s:]*geschlossen'
     
+    # Pattern for multiple time ranges like "Mo - Fr: 10:00 - 13:00 Uhr & 14:00 - 18:00 Uhr"
+    mo_fr_double_pattern = r'mo[\s\-]+fr[\s:]*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*(?:uhr\s*)?[&und]+\s*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*uhr?'
+    
     full_text_lower = full_text.lower()
     
-    # Check for Mo - Fr pattern
-    mo_fr_match = re.search(mo_fr_pattern, full_text_lower)
-    if mo_fr_match:
-        start_hour = mo_fr_match.group(1)
-        start_min = mo_fr_match.group(2)
-        end_hour = mo_fr_match.group(3)
-        end_min = mo_fr_match.group(4)
-        time_str = f"{start_hour}:{start_min} - {end_hour}:{end_min}"
+    # Check for Mo - Fr pattern with double time ranges first
+    mo_fr_double_match = re.search(mo_fr_double_pattern, full_text_lower)
+    if mo_fr_double_match:
+        start_hour1 = mo_fr_double_match.group(1)
+        start_min1 = mo_fr_double_match.group(2)
+        end_hour1 = mo_fr_double_match.group(3)
+        end_min1 = mo_fr_double_match.group(4)
+        start_hour2 = mo_fr_double_match.group(5)
+        start_min2 = mo_fr_double_match.group(6)
+        end_hour2 = mo_fr_double_match.group(7)
+        end_min2 = mo_fr_double_match.group(8)
+        time_str = f"{start_hour1}:{start_min1} - {end_hour1}:{end_min1} & {start_hour2}:{start_min2} - {end_hour2}:{end_min2}"
         
         for day in ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag']:
             if day not in opening_hours:
                 opening_hours[day] = time_str
+    
+    # Check for simple Mo - Fr pattern (fallback)
+    elif not opening_hours:  # Only if no hours found yet
+        mo_fr_match = re.search(mo_fr_pattern, full_text_lower)
+        if mo_fr_match:
+            start_hour = mo_fr_match.group(1)
+            start_min = mo_fr_match.group(2)
+            end_hour = mo_fr_match.group(3)
+            end_min = mo_fr_match.group(4)
+            time_str = f"{start_hour}:{start_min} - {end_hour}:{end_min}"
+            
+            for day in ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag']:
+                if day not in opening_hours:
+                    opening_hours[day] = time_str
     
     # Check for Sa - So pattern
     if re.search(sa_so_pattern, full_text_lower):
