@@ -203,10 +203,17 @@ def extract_opening_hours(soup):
     
     # Multiple patterns to try
     patterns_to_test = [
+        # Original patterns for & separator
         r'mo[\s\-]+fr[\s:]*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*uhr\s*[&]+\s*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*uhr',
         r'mo[\s\-]+fr[\s:]*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*[&]+\s*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})',
         r'(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*uhr\s*[&]+\s*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*uhr',
         r'(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*[&]+\s*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})',
+        # New patterns for 'bis' separator - "Mo. bis Sa.: 8:00 bis 18:00 Uhr"
+        r'mo\.?\s*bis\s*sa\.?[\s:]*(\d{1,2}):(\d{2})\s*bis\s*(\d{1,2}):(\d{2})\s*uhr',
+        r'mo\.?\s*bis\s*sa\.?[\s:]*(\d{1,2}):(\d{2})\s*bis\s*(\d{1,2}):(\d{2})',
+        # General day range patterns
+        r'(mo|montag)\.?\s*bis\s*(sa|samstag)\.?[\s:]*(\d{1,2}):(\d{2})\s*bis\s*(\d{1,2}):(\d{2})\s*uhr',
+        r'(mo|montag)\.?\s*bis\s*(sa|samstag)\.?[\s:]*(\d{1,2}):(\d{2})\s*bis\s*(\d{1,2}):(\d{2})',
     ]
     
     print("Testing patterns on full text...")
@@ -217,11 +224,44 @@ def extract_opening_hours(soup):
         
         if matches:
             match = matches[0]
-            if len(match) >= 8:
+            
+            # Handle different match group lengths
+            if len(match) >= 8:  # Double time range (&)
                 time_str = f"{match[0]}:{match[1]} - {match[2]}:{match[3]} & {match[4]}:{match[5]} - {match[6]}:{match[7]}"
                 print(f"SUCCESS: Found double time range: {time_str}")
                 for day in ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag']:
                     opening_hours[day] = time_str
+                print("=== END DEBUG ===")
+                return opening_hours
+            elif len(match) >= 6:  # Day range with bis (Mo bis Sa)
+                # Extract time from the match
+                if match[0] in ['mo', 'montag'] and match[1] in ['sa', 'samstag']:
+                    # Mo bis Sa pattern
+                    start_hour = match[2] if len(match) > 2 else match[-4]
+                    start_min = match[3] if len(match) > 3 else match[-3]
+                    end_hour = match[4] if len(match) > 4 else match[-2]
+                    end_min = match[5] if len(match) > 5 else match[-1]
+                    time_str = f"{start_hour}:{start_min} - {end_hour}:{end_min}"
+                    print(f"SUCCESS: Found Mo bis Sa range: {time_str}")
+                    # Apply to all days Monday to Saturday
+                    for day in ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag', 'samstag']:
+                        opening_hours[day] = time_str
+                    print("=== END DEBUG ===")
+                    return opening_hours
+            elif len(match) >= 4:  # Simple time range
+                start_hour = match[-4] if len(match) >= 4 else match[0]
+                start_min = match[-3] if len(match) >= 4 else match[1]
+                end_hour = match[-2] if len(match) >= 4 else match[2]
+                end_min = match[-1] if len(match) >= 4 else match[3]
+                time_str = f"{start_hour}:{start_min} - {end_hour}:{end_min}"
+                print(f"SUCCESS: Found simple time range: {time_str}")
+                # Check if this is a Mo bis Sa pattern by looking at the original text
+                if 'mo' in full_text_lower and 'bis' in full_text_lower and 'sa' in full_text_lower:
+                    for day in ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag', 'samstag']:
+                        opening_hours[day] = time_str
+                else:
+                    for day in ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag']:
+                        opening_hours[day] = time_str
                 print("=== END DEBUG ===")
                 return opening_hours
     
