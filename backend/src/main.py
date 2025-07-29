@@ -9,6 +9,7 @@ from src.models.user import db
 from src.routes.user import user_bp
 from src.routes.auth import auth_bp
 from src.routes.seo import seo_bp
+from src.routes.image_generator import image_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
@@ -22,6 +23,7 @@ CORS(app, origins="*", supports_credentials=True)
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(seo_bp, url_prefix='/api/seo')
+app.register_blueprint(image_bp, url_prefix='/api/images')
 
 # Database configuration
 # Create database directory if it doesn't exist
@@ -32,10 +34,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
 with app.app_context():
+    # Import models to ensure tables are created
+    from src.models.user import User
+    from src.models.image import GeneratedImage
+    
     db.create_all()
     
     # Create default admin user if it doesn't exist
-    from src.models.user import User
     admin_user = User.query.filter_by(username='admin').first()
     if not admin_user:
         admin_user = User(username='admin', email='admin@example.com', role='admin')

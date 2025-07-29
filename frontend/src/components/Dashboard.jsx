@@ -4,15 +4,17 @@ import Header from './Header';
 import DomainAnalysisForm from './DomainAnalysisForm';
 import SEOResultDisplay from './SEOResultDisplay';
 import UserManagement from './UserManagement';
+import ImageGenerator from './ImageGenerator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Search, RefreshCw, Eye, Trash2, Users, Settings, ArrowLeft } from 'lucide-react';
+import { Search, RefreshCw, Eye, Trash2, Users, Settings, ArrowLeft, Image, Globe } from 'lucide-react';
 
 const Dashboard = () => {
   const { token, isAdmin } = useAuth();
+  const [activeTab, setActiveTab] = useState('seo'); // 'seo' or 'images'
   const [results, setResults] = useState([]);
   const [selectedResult, setSelectedResult] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -127,7 +129,39 @@ const Dashboard = () => {
       <Header />
       
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Tab Navigation */}
+        <div className="mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('seo')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'seo'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Globe className="h-4 w-4 inline mr-2" />
+                SEO-Analyse
+              </button>
+              <button
+                onClick={() => setActiveTab('images')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'images'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Image className="h-4 w-4 inline mr-2" />
+                AI-Bildgenerator
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'seo' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Analysis Form and Search */}
           <div className="lg:col-span-1 space-y-6">
             <DomainAnalysisForm onAnalysisComplete={handleAnalysisComplete} />
@@ -296,6 +330,10 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+        ) : (
+          /* AI-Bildgenerator Tab */
+          <ImageGenerator />
+        )}
       </div>
     </div>
   );
