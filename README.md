@@ -1,14 +1,16 @@
-# SEO Profile Generator
+# Greven Content Generator
 
-Ein vollständiges Web-Tool zur automatischen Generierung von SEO-optimierten Unternehmensbeschreibungen für Google-Unternehmensprofile mittels ChatGPT-4.
+Ein vollständiges Web-Tool zur automatischen Generierung von Texten und professionellen Bildern für Unternehmen mittels KI-Technologie.
 
 ## 🎯 Funktionen
 
-- **Domain-Analyse**: Eingabe einer Domain zur automatischen SEO-Analyse
-- **ChatGPT-4 Integration**: Strukturierte Prompts für professionelle SEO-Texte
+- **Text-Erstellung**: Eingabe einer Domain zur automatischen Text-Generierung
+- **Bild-Erstellung**: KI-gestützte Bildgenerierung mit gpt-image-1
+- **ChatGPT-4 Integration**: Strukturierte Prompts für professionelle Texte
 - **Benutzerrollen**: Admin- und Benutzer-Rollen mit entsprechenden Berechtigungen
 - **Suchfunktion**: Durchsuchbare Ergebnisse mit Filterung nach Domain-Namen
 - **Kopier-Funktionalität**: Einfaches Kopieren aller generierten Inhalte
+- **Bildverwaltung**: Upload, Vorschau und Download von generierten Bildern
 - **Responsive Design**: Optimiert für Desktop und Mobile
 
 ## 🏗️ Technologie-Stack
@@ -17,7 +19,7 @@ Ein vollständiges Web-Tool zur automatischen Generierung von SEO-optimierten Un
 - **Framework**: Flask (Python)
 - **Datenbank**: SQLite
 - **Authentifizierung**: JWT (JSON Web Tokens)
-- **API**: OpenAI GPT-4
+- **APIs**: OpenAI GPT-4 & gpt-image-1
 - **CORS**: Flask-CORS für Frontend-Backend-Kommunikation
 
 ### Frontend

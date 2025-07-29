@@ -1,23 +1,25 @@
-# SEO Profile Generator - Project Summary
+# Greven Content Generator - Project Summary
 
 ## 🎯 Project Overview
 
-The SEO Profile Generator is a complete web application that automates the creation of SEO-optimized business descriptions for Google Business Profiles using ChatGPT-4. The application features a modern React frontend with a Flask backend, user authentication, and comprehensive search functionality.
+The Greven Content Generator is a complete web application that automates the creation of professional texts and AI-generated images for businesses using ChatGPT-4 and gpt-image-1. The application features a modern React frontend with a Flask backend, user authentication, and comprehensive content management functionality.
 
 ## ✅ Completed Features
 
 ### 🔧 Backend (Flask)
 - **Authentication System**: JWT-based authentication with admin/user roles
-- **Database Models**: SQLite with User and SEOResult models
-- **API Endpoints**: RESTful API for authentication, user management, and SEO analysis
-- **OpenAI Integration**: Structured prompts for professional SEO content generation
+- **Database Models**: SQLite with User, SEOResult, and GeneratedImage models
+- **API Endpoints**: RESTful API for authentication, user management, text generation, and image creation
+- **OpenAI Integration**: Structured prompts for professional content generation and AI image creation
+- **Static File Serving**: Proper image serving for generated content
 - **CORS Configuration**: Proper cross-origin resource sharing setup
 - **Auto-Migration**: Database tables created automatically on startup
 
 ### 🎨 Frontend (React)
-- **Modern UI**: Built with shadcn/ui components and Tailwind CSS
-- **Authentication Flow**: Login form with token-based authentication
-- **Domain Analysis**: User-friendly form for domain input and analysis
+- **Modern UI**: Built with shadcn/ui components and Tailwind CSS with Greven branding
+- **Authentication Flow**: Login form with token-based authentication and Greven styling
+- **Text Creation**: User-friendly form for domain input and text generation
+- **Image Generation**: AI-powered image creation with type selection and preview
 - **Results Display**: Comprehensive display of generated SEO content
 - **Search & Filter**: Advanced search functionality with pagination
 - **User Management**: Admin interface for user creation and management

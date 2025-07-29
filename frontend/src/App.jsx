@@ -10,10 +10,10 @@ const AppContent = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center" style={{background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)'}}>
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Lade Anwendung...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-white" />
+          <p className="text-white font-medium">Lade Greven Content Generator...</p>
         </div>
       </div>
     );

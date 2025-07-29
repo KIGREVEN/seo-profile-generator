@@ -53,11 +53,11 @@ const DomainAnalysisForm = ({ onAnalysisComplete }) => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          <Globe className="h-5 w-5" />
-          <span>Domain-Analyse</span>
+          <Globe className="h-5 w-5 text-orange-500" />
+          <span>Text-Erstellung</span>
         </CardTitle>
         <CardDescription>
-          Geben Sie eine Domain ein, um eine SEO-optimierte Unternehmensbeschreibung zu generieren
+          Geben Sie eine Domain ein, um einen Text zu generieren
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -90,16 +90,17 @@ const DomainAnalysisForm = ({ onAnalysisComplete }) => {
           
           <Button 
             type="submit" 
-            className="w-full" 
+            className="w-full text-white font-medium hover:opacity-90 transition-opacity" 
             disabled={loading || !domain.trim()}
+            style={{background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)'}}
           >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analysiere Domain...
+                Erstelle Text...
               </>
             ) : (
-              'Domain analysieren'
+              'Text generieren'
             )}
           </Button>
         </form>

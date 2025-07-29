@@ -29,17 +29,17 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            SEO Profile Generator
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)'}}>
+      <Card className="w-full max-w-md shadow-2xl">
+        <CardHeader className="space-y-1 text-center" style={{background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)', color: 'white', borderRadius: '0.5rem 0.5rem 0 0'}}>
+          <CardTitle className="text-3xl font-bold">
+            GREVEN
           </CardTitle>
-          <CardDescription className="text-center">
-            Melden Sie sich an, um fortzufahren
+          <CardDescription className="text-orange-100 text-lg font-medium">
+            Content Generator
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="bg-white p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <Alert variant="destructive">
@@ -48,7 +48,7 @@ const LoginForm = () => {
             )}
             
             <div className="space-y-2">
-              <Label htmlFor="username">Benutzername</Label>
+              <Label htmlFor="username" className="text-gray-700 font-medium">Benutzername</Label>
               <Input
                 id="username"
                 type="text"
@@ -57,11 +57,12 @@ const LoginForm = () => {
                 required
                 disabled={loading}
                 placeholder="Benutzername eingeben"
+                className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password">Passwort</Label>
+              <Label htmlFor="password" className="text-gray-700 font-medium">Passwort</Label>
               <Input
                 id="password"
                 type="password"
@@ -70,13 +71,15 @@ const LoginForm = () => {
                 required
                 disabled={loading}
                 placeholder="Passwort eingeben"
+                className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
               />
             </div>
             
             <Button 
               type="submit" 
-              className="w-full" 
+              className="w-full font-medium text-white hover:opacity-90 transition-opacity" 
               disabled={loading}
+              style={{background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)'}}
             >
               {loading ? (
                 <>
@@ -89,7 +92,7 @@ const LoginForm = () => {
             </Button>
           </form>
           
-          <div className="mt-4 text-sm text-gray-600 text-center">
+          <div className="mt-4 text-sm text-gray-500 text-center">
             <p>Standard Admin: admin / admin123</p>
           </div>
         </CardContent>

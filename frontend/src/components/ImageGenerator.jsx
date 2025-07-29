@@ -144,8 +144,8 @@ const ImageGenerator = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Image className="h-5 w-5" />
-            <span>AI-Bildgenerator</span>
+            <Image className="h-5 w-5 text-orange-500" />
+            <span>Bild-Erstellung</span>
           </CardTitle>
           <CardDescription>
             Generieren Sie professionelle Bilder mit KI für Ihre Website oder Präsentationen
@@ -194,8 +194,9 @@ const ImageGenerator = () => {
             
             <Button 
               type="submit" 
-              className="w-full" 
+              className="w-full text-white font-medium hover:opacity-90 transition-opacity" 
               disabled={loading || !userInput.trim()}
+              style={{background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)'}}
             >
               {loading ? (
                 <>

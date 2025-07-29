@@ -14,7 +14,7 @@ import { Search, RefreshCw, Eye, Trash2, Users, Settings, ArrowLeft, Image, Glob
 
 const Dashboard = () => {
   const { token, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState('seo'); // 'seo' or 'images'
+  const [activeTab, setActiveTab] = useState('text'); // 'text' or 'images' (renamed from 'seo')
   const [results, setResults] = useState([]);
   const [selectedResult, setSelectedResult] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -134,33 +134,33 @@ const Dashboard = () => {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
               <button
-                onClick={() => setActiveTab('seo')}
+                onClick={() => setActiveTab('text')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'seo'
-                    ? 'border-blue-500 text-blue-600'
+                  activeTab === 'text'
+                    ? 'border-orange-500 text-orange-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <Globe className="h-4 w-4 inline mr-2" />
-                SEO-Analyse
+                Text Erstellung
               </button>
               <button
                 onClick={() => setActiveTab('images')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'images'
-                    ? 'border-blue-500 text-blue-600'
+                    ? 'border-orange-500 text-orange-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <Image className="h-4 w-4 inline mr-2" />
-                AI-Bildgenerator
+                Bild Erstellung
               </button>
             </nav>
           </div>
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'seo' ? (
+        {activeTab === 'text' ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Analysis Form and Search */}
           <div className="lg:col-span-1 space-y-6">
