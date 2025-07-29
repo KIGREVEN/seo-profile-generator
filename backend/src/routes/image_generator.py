@@ -21,21 +21,21 @@ def build_prompt(user_input, image_type):
     # Base prompt template
     base_prompt = "professional photography, ultra-realistic, 4K UHD resolution, shallow depth of field, soft natural lighting, high dynamic range, sharp focus, bokeh background, cinematic composition, wide aspect ratio"
     
-    # Format-specific settings for DALL-E 2 model
-    # Supported sizes: '256x256', '512x512', '1024x1024'
+    # Format-specific settings for gpt-image-1 model
+    # Supported sizes: '1024x1024', '1024x1536', '1536x1024', and 'auto'
     if image_type == 'header':
         format_ratio = "(16:9)"
         format_text = "web header format"
-        size = "1024x1024"  # DALL-E 2 only supports square sizes
+        size = "1536x1024"  # gpt-image-1 supported size for header
     elif image_type == 'kachel':
         format_ratio = "(4:3)"
         format_text = "editorial layout"
-        size = "1024x1024"  # DALL-E 2 only supports square sizes
+        size = "1024x1024"  # gpt-image-1 supported size closest to 4:3
     else:
         # Fallback
         format_ratio = "(16:9)"
         format_text = "web header format"
-        size = "1024x1024"  # DALL-E 2 only supports square sizes
+        size = "1536x1024"  # gpt-image-1 supported size
     
     # Build complete prompt
     complete_prompt = f"{base_prompt} {format_ratio}, {format_text}, color graded like editorial magazine, taken with DSLR or mirrorless camera (Canon EOS R5 / Sony A7R IV), {user_input}"
@@ -81,16 +81,16 @@ def generate_image():
         print(f"Prompt: {prompt}")
         print(f"=== END DEBUG ===")
         
-        # Generate image using OpenAI DALL-E 2 (fallback from gpt-image-1)
+        # Generate image using OpenAI gpt-image-1
         try:
             client = openai.OpenAI(api_key=openai.api_key)
             
             response = client.images.generate(
-                model="dall-e-2",  # Use DALL-E 2 as fallback (gpt-image-1 may not exist)
+                model="gpt-image-1",  # Back to gpt-image-1 as requested
                 prompt=prompt,
                 size=size,
+                quality="high",  # gpt-image-1 supports quality parameter
                 n=1
-                # Note: DALL-E 2 doesn't support quality parameter
             )
             
             print(f"OpenAI API Response: {response}")
