@@ -164,6 +164,71 @@ def extract_opening_hours(soup):
     # Get all text from the page
     full_text = soup.get_text()
     
+    # Debug: Print relevant sections
+    print("=== OPENING HOURS DEBUG ===")
+    print(f"Full text length: {len(full_text)}")
+    
+    # Look for opening hours keywords in full text
+    opening_keywords = [
+        'öffnungszeiten', 'opening hours', 'geschäftszeiten', 'servicezeiten',
+        'sprechzeiten', 'bürozeiten', 'arbeitszeiten', 'zeiten'
+    ]
+    
+    # Find lines containing opening hours
+    lines = full_text.split('\n')
+    relevant_lines = []
+    
+    for i, line in enumerate(lines):
+        line_lower = line.lower().strip()
+        if any(keyword in line_lower for keyword in opening_keywords):
+            # Include surrounding lines for context
+            start = max(0, i - 3)
+            end = min(len(lines), i + 5)
+            context_lines = lines[start:end]
+            relevant_lines.extend(context_lines)
+            print(f"Found opening hours context around line {i}:")
+            for j, context_line in enumerate(context_lines):
+                print(f"  {start + j}: {context_line.strip()}")
+            break
+    
+    # Also check footer specifically
+    footer_elements = soup.find_all(['footer', '.footer', '#footer', '.contact', '.kontakt'])
+    for footer in footer_elements:
+        footer_text = footer.get_text()
+        print(f"Footer content: {footer_text}")
+        relevant_lines.extend(footer_text.split('\n'))
+    
+    # Look for the specific pattern from screenshot: "Mo - Fr: 10:00 - 13:00 Uhr & 14:00 - 18:00 Uhr"
+    full_text_lower = full_text.lower()
+    
+    # Multiple patterns to try
+    patterns_to_test = [
+        r'mo[\s\-]+fr[\s:]*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*uhr\s*[&]+\s*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*uhr',
+        r'mo[\s\-]+fr[\s:]*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*[&]+\s*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})',
+        r'(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*uhr\s*[&]+\s*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*uhr',
+        r'(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})\s*[&]+\s*(\d{1,2}):(\d{2})[\s\-]+(\d{1,2}):(\d{2})',
+    ]
+    
+    print("Testing patterns on full text...")
+    for i, pattern in enumerate(patterns_to_test):
+        matches = re.findall(pattern, full_text_lower)
+        print(f"Pattern {i+1}: {pattern}")
+        print(f"Matches: {matches}")
+        
+        if matches:
+            match = matches[0]
+            if len(match) >= 8:
+                time_str = f"{match[0]}:{match[1]} - {match[2]}:{match[3]} & {match[4]}:{match[5]} - {match[6]}:{match[7]}"
+                print(f"SUCCESS: Found double time range: {time_str}")
+                for day in ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag']:
+                    opening_hours[day] = time_str
+                print("=== END DEBUG ===")
+                return opening_hours
+    
+    # Fallback to original logic if patterns don't work
+    print("No double patterns matched, falling back to original logic...")
+    print("=== END DEBUG ===")
+    
     # German day names and their variations
     day_patterns = {
         'montag': ['montag', 'mo', 'mon'],
