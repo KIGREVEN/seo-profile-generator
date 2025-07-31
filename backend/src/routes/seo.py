@@ -513,49 +513,81 @@ def analyze_domain():
         }), 400
     
     # Prepare the GPT prompt with real website content
-    prompt = f"""**ROLLE:** Du bist ein erfahrener SEO-Texter und Experte für Google-Unternehmensprofile.
+    prompt = f"""ROLLE
+Du bist ein erfahrener SEO-Texter und Experte für Google-Unternehmensprofile.
 
-**AUFGABE:** Erstelle eine prägnante, suchmaschinenoptimierte Unternehmensbeschreibung für ein Google-Unternehmensprofil basierend auf den ECHTEN Website-Inhalten.
+ZIEL
+Erstelle eine prägnante, suchmaschinenoptimierte und zugleich kundenfreundliche Unternehmensbeschreibung für ein Google-Unternehmensprofil. Keine Quellenverweise. Es soll ein überzeugender Werbetext sein, wie von einem SEO-Profi geschrieben – mit authentischem, professionellem Ton.
 
-**WEBSITE-INFORMATIONEN:**
+ARBEITSABLAUF — SCHRITT FÜR SCHRITT
+
+Website analysieren
+Prüfe und notiere:
+• Dienstleistungen / Produkte
+• Alleinstellungsmerkmale (USPs)
+• Zielgruppe
+• Standort(e)
+• Öffnungszeiten
+• Impressumsangaben (Firmenname, Adresse, Geschäftsführer, E-Mail, Telefonnummer, Handelsregister, USt-ID)
+
+WEBSITE-INFORMATIONEN:
 URL: {crawl_result['url']}
 Titel: {crawl_result['title']}
 Meta-Beschreibung: {crawl_result['meta_description']}
 
-**WEBSITE-INHALT:**
+WEBSITE-INHALT:
 {crawl_result['content']}
 
-**KONTAKT-INFORMATIONEN:**
+KONTAKT-INFORMATIONEN:
 {json.dumps(crawl_result['contact_info'], indent=2)}
 
-**GEFUNDENE ÖFFNUNGSZEITEN:**
+GEFUNDENE ÖFFNUNGSZEITEN:
 {json.dumps(crawl_result['opening_hours'], indent=2)}
 
-**ANWEISUNGEN:**
-1. Analysiere NUR die bereitgestellten Website-Inhalte
-2. Erfinde KEINE Informationen, die nicht auf der Website stehen
-3. Erstelle eine professionelle SEO-optimierte Beschreibung
-4. Verwende natürliche Keywords aus dem Website-Inhalt
-5. Halte die Zeichenlimits ein
-6. Nutze die gefundenen Öffnungszeiten, falls vorhanden
+Inhalte aufbereiten
+– Aktive, klare Sprache. Keine Füllwörter.
+– Unternehmensbeschreibung immer aus Sicht des Unternehmens formulieren (z. B. „Wir sind…", „Wir bieten…").
+– Kundennutzen und Mehrwert deutlich herausstellen.
+– Zehn relevante SEO-Keywords natürlich einbauen (kein Keyword-Stuffing). Fehlende Infos mit „[Angabe fehlt]" kennzeichnen.
+– Bei mehreren Standorten jeden Standort separat mit vollständigen Daten aufführen.
 
-**AUSGABEFORMAT:**
-1. **Kurzbeschreibung** (max. 150 Zeichen)
-[Prägnante Zusammenfassung basierend auf echten Website-Inhalten]
+AUSGABESTRUKTUR
+(Rein als Klartext, keine Markdown-Syntax verwenden)
 
-2. **Langbeschreibung** (ca. 750 Zeichen)
-[Ausführliche Beschreibung mit echten USPs und Services von der Website]
+Kurzbeschreibung (max. 150 Zeichen)
+<Knackige Zusammenfassung des Angebots aus Sicht des Unternehmens – SEO-relevant und aufmerksamkeitsstark>
 
-3. **Keywords** (10 relevante Keywords aus dem Website-Inhalt)
-[Keyword 1, Keyword 2, ...]
+Langbeschreibung (ca. 750 Zeichen)
+<Ausführliche, suchmaschinenoptimierte Beschreibung, aus Sicht des Unternehmens formuliert („Wir sind…", „Wir helfen…", etc.). Fokus auf USPs, Keywords und Kundennutzen. Keine Quellenverweise. Ziel: präzise erklären, wer das Unternehmen ist und was es bietet. Direkt unter die Beschreibung folgt eine strukturierte Auflistung der Leistungen.>
 
-4. **Öffnungszeiten**
-[Verwende die gefundenen Öffnungszeiten oder "Nicht auf Website angegeben"]
+Leistungen:
+– Leistung 1
+– Leistung 2
+– Leistung 3
+– usw.
 
-5. **Kontaktinformationen**
-[Echte Kontaktdaten von der Website oder "Nicht verfügbar"]
+Keywords
+– Keyword 1, Keyword 2, … Keyword 10
 
-**WICHTIG:** Verwende ausschließlich Informationen, die tatsächlich auf der Website stehen!"""
+Öffnungszeiten
+– Montag–Freitag: <Zeiten>
+– Samstag: <Zeiten>
+– Sonntag: <Zeiten>
+
+Impressum
+Unternehmen: <Firmenname>
+Adresse: <Straße, PLZ, Stadt>
+Geschäftsführer: <Name>
+Kontakt: <Telefon, E-Mail>
+
+HINWEISE
+Keine Quellenangaben, Fußnoten, URLs oder sonstige Verweise im Text.
+
+Zeichenlimits strikt einhalten.
+
+Klare, informative und überzeugende Formulierungen. Qualität vor Quantität.
+
+Unternehmenssprache beibehalten: „Wir" statt dritte Person."""
 
     try:
         # Call OpenAI API
