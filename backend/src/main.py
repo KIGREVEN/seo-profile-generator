@@ -1,15 +1,28 @@
 import os
 import sys
+import logging
+import urllib3
+from flask import Flask, send_from_directory, jsonify, request
+
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
 from src.models.user import db
 from src.routes.user import user_bp
 from src.routes.auth import auth_bp
 from src.routes.seo import seo_bp
 from src.routes.image_generator import image_bp
+
+# SSL-Warnungen unterdrücken
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Logging konfigurieren
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
@@ -18,6 +31,16 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
 
 # Enable CORS for all routes with credentials support
 CORS(app, origins="*", supports_credentials=True)
+
+# Flask-Request-Logging aktivieren
+@app.before_request
+def log_request_info():
+    app.logger.info(f'{request.method} {request.url} - {request.remote_addr}')
+
+@app.after_request
+def log_response_info(response):
+    app.logger.info(f'{request.method} {request.url} - {response.status_code}')
+    return response
 
 # Register blueprints
 app.register_blueprint(user_bp, url_prefix='/api')
