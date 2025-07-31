@@ -92,9 +92,7 @@ const LoginForm = () => {
             </Button>
           </form>
           
-          <div className="mt-4 text-sm text-gray-500 text-center">
-            <p>Standard Admin: admin / admin123</p>
-          </div>
+
         </CardContent>
       </Card>
     </div>
