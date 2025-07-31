@@ -280,8 +280,9 @@ def extract_opening_hours(soup):
         'sonntag': ['sonntag', 'so', 'son', 'sun']
     }
     
-    # Time patterns
+    # Time patterns - enhanced for more formats
     time_patterns = [
+        # Standard formats
         r'(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})',  # 09:00 - 18:00
         r'(\d{1,2})\.(\d{2})\s*-\s*(\d{1,2})\.(\d{2})',  # 09.00 - 18.00
         r'(\d{1,2})\s*-\s*(\d{1,2})\s*Uhr',  # 9 - 18 Uhr
@@ -289,6 +290,9 @@ def extract_opening_hours(soup):
         r'(\d{1,2})\s*bis\s*(\d{1,2})\s*Uhr',  # 9 bis 18 Uhr
         # Multiple time ranges with & or und
         r'(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*(?:Uhr\s*)?[&und]+\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*Uhr?',  # 10:00 - 13:00 Uhr & 14:00 - 18:00 Uhr
+        # NEW: Formats with "Uhr" and em-dash (–)
+        r'(\d{1,2}):(\d{2})\s*Uhr\s*[–-]\s*(\d{1,2}):(\d{2})\s*Uhr',  # 8:00 Uhr – 16:00 Uhr
+        r'(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})\s*Uhr',  # 8:00 – 16:00 Uhr
     ]
     
     # Look for opening hours keywords
@@ -319,6 +323,38 @@ def extract_opening_hours(soup):
     for line in relevant_sections:
         line = line.strip()
         if len(line) < 5:  # Skip very short lines
+            continue
+        
+        # NEW: Handle complex day patterns like "Montag, Mittwoch, Donnerstag:" and "Dienstag und Freitag:"
+        # Pattern for multiple days with comma: "Montag, Mittwoch, Donnerstag: 8:00 Uhr – 16:00 Uhr"
+        complex_day_pattern = r'((?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag)(?:\s*,\s*(?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag))*)\s*:\s*(.+)'
+        complex_match = re.search(complex_day_pattern, line.lower())
+        if complex_match:
+            days_str = complex_match.group(1)
+            time_str = complex_match.group(2)
+            
+            # Extract individual days
+            days = [day.strip() for day in days_str.replace(' und ', ', ').split(',')]
+            
+            # Extract time from the time string
+            for pattern in time_patterns:
+                time_matches = re.findall(pattern, time_str)
+                if time_matches:
+                    match = time_matches[0]
+                    if len(match) == 4:  # Full time format
+                        formatted_time = f"{match[0]}:{match[1]} - {match[2]}:{match[3]}"
+                    elif len(match) == 2:  # Simple hour format
+                        formatted_time = f"{match[0]}:00 - {match[1]}:00"
+                    else:
+                        formatted_time = time_str.strip()
+                    
+                    # Apply to all mentioned days
+                    for day in days:
+                        day = day.strip()
+                        if day in day_patterns:
+                            opening_hours[day] = formatted_time
+                            print(f"Found complex pattern for {day}: {formatted_time}")
+                    break
             continue
             
         # Check each day
