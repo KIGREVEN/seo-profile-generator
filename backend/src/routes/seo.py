@@ -458,22 +458,61 @@ def parse_seo_response(response_text):
     }
     
     try:
-        # Extract sections using regex patterns
+        print("=== PARSING DEBUG ===")
+        print(f"Response text length: {len(response_text)}")
+        print(f"First 500 chars: {response_text[:500]}")
+        
+        # Extract sections using regex patterns for the new format
         sections = {
-            'short_description': r'1\.\s*\*\*Kurzbeschreibung\*\*.*?\n(.*?)(?=\n\n|\n2\.)',
-            'long_description': r'2\.\s*\*\*Langbeschreibung\*\*.*?\n(.*?)(?=\n\n|\n3\.)',
-            'keywords': r'3\.\s*\*\*Keywords\*\*.*?\n(.*?)(?=\n\n|\n4\.)',
-            'opening_hours': r'4\.\s*\*\*Öffnungszeiten\*\*.*?\n(.*?)(?=\n\n|\n5\.)',
-            'company_info': r'5\.\s*\*\*Impressum\*\*.*?\n(.*?)(?=\n\n|$)'
+            # New format patterns without markdown
+            'short_description': r'Kurzbeschreibung\s*\([^)]*\)\s*\n(.*?)(?=\n\n|\nLangbeschreibung)',
+            'long_description': r'Langbeschreibung\s*\([^)]*\)\s*\n(.*?)(?=\n\n|\nLeistungen:|\nKeywords)',
+            'keywords': r'Keywords\s*\n(.*?)(?=\n\n|\nÖffnungszeiten)',
+            'opening_hours': r'Öffnungszeiten\s*\n(.*?)(?=\n\n|\nImpressum)',
+            'company_info': r'Impressum\s*\n(.*?)(?=\n\n|$)',
+            
+            # Fallback patterns for old format (with markdown)
+            'short_description_old': r'1\.\s*\*\*Kurzbeschreibung\*\*.*?\n(.*?)(?=\n\n|\n2\.)',
+            'long_description_old': r'2\.\s*\*\*Langbeschreibung\*\*.*?\n(.*?)(?=\n\n|\n3\.)',
+            'keywords_old': r'3\.\s*\*\*Keywords\*\*.*?\n(.*?)(?=\n\n|\n4\.)',
+            'opening_hours_old': r'4\.\s*\*\*Öffnungszeiten\*\*.*?\n(.*?)(?=\n\n|\n5\.)',
+            'company_info_old': r'5\.\s*\*\*Impressum\*\*.*?\n(.*?)(?=\n\n|$)'
         }
         
-        for key, pattern in sections.items():
+        # Try new format first, then fallback to old format
+        for key in ['short_description', 'long_description', 'keywords', 'opening_hours', 'company_info']:
+            # Try new format
+            pattern = sections[key]
             match = re.search(pattern, response_text, re.DOTALL | re.IGNORECASE)
             if match:
                 result[key] = match.group(1).strip()
+                print(f"Found {key} (new format): {result[key][:100]}...")
+            else:
+                # Try old format
+                old_pattern = sections[f'{key}_old']
+                match = re.search(old_pattern, response_text, re.DOTALL | re.IGNORECASE)
+                if match:
+                    result[key] = match.group(1).strip()
+                    print(f"Found {key} (old format): {result[key][:100]}...")
+                else:
+                    print(f"No match found for {key}")
+        
+        # Additional parsing for Leistungen (services) if present
+        services_pattern = r'Leistungen:\s*\n((?:–[^\n]+\n?)+)'
+        services_match = re.search(services_pattern, response_text, re.DOTALL | re.IGNORECASE)
+        if services_match:
+            services = services_match.group(1).strip()
+            # Append services to long description if found
+            if result['long_description']:
+                result['long_description'] += f"\n\nLeistungen:\n{services}"
+            print(f"Found services: {services[:100]}...")
+        
+        print("=== END PARSING DEBUG ===")
     
     except Exception as e:
         print(f"Error parsing SEO response: {e}")
+        import traceback
+        traceback.print_exc()
     
     return result
 
