@@ -323,19 +323,25 @@ def extract_opening_hours(soup):
     # "Bürozeiten:Montag, Mittwoch, Donnerstag: 8:00 Uhr – 16:00 UhrDienstag und Freitag: 8:00 Uhr – 17:00 UhrSamstag: 10:00 Uhr – 13:00 Uhr"
     full_text_lower = full_text.lower()
     
+    # Normalize non-breaking spaces (\xa0) to regular spaces
+    full_text_normalized = full_text_lower.replace('\xa0', ' ')
+    
     # Look for the specific single-line pattern
-    single_line_pattern = r'bürozeiten:\s*(.*?)(?:sowie|$)'
-    single_line_match = re.search(single_line_pattern, full_text_lower)
+    single_line_pattern = r'bürozeiten:[\s\xa0]*(.*?)(?:sowie|$)'
+    single_line_match = re.search(single_line_pattern, full_text_normalized)
     
     if single_line_match:
         opening_text = single_line_match.group(1)
         print(f"Found single-line opening hours: {opening_text}")
         
+        # Normalize the opening text as well
+        opening_text = opening_text.replace('\xa0', ' ')
+        
         # Parse the complex single-line format
         # Pattern: "montag, mittwoch, donnerstag: 8:00 uhr – 16:00 uhrdienstag und freitag: 8:00 uhr – 17:00 uhrsamstag: 10:00 uhr – 13:00 uhr"
         
         # Split by day patterns that end with "uhr" followed by a capital letter (next day)
-        day_segments = re.split(r'uhr(?=[A-ZÄÖÜ])', opening_text)
+        day_segments = re.split(r'uhr(?=[a-zäöüß])', opening_text)
         
         for segment in day_segments:
             segment = segment.strip()
