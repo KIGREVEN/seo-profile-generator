@@ -168,6 +168,77 @@ def extract_opening_hours(soup):
     print("=== OPENING HOURS DEBUG ===")
     print(f"Full text length: {len(full_text)}")
     
+    # NEW: Handle single-line opening hours format FIRST (like Bestattungshaus Schweitzer)
+    # "Bürozeiten:Montag, Mittwoch, Donnerstag: 8:00 Uhr – 16:00 UhrDienstag und Freitag: 8:00 Uhr – 17:00 UhrSamstag: 10:00 Uhr – 13:00 Uhr"
+    full_text_lower = full_text.lower()
+    
+    # Normalize non-breaking spaces (\xa0) to regular spaces
+    full_text_normalized = full_text_lower.replace('\xa0', ' ')
+    
+    # Look for the specific single-line pattern
+    single_line_pattern = r'bürozeiten:[\s\xa0]*(.*?)(?:sowie|$)'
+    single_line_match = re.search(single_line_pattern, full_text_normalized)
+    
+    if single_line_match:
+        opening_text = single_line_match.group(1)
+        print(f"Found single-line opening hours: {opening_text}")
+        
+        # Normalize the opening text as well
+        opening_text = opening_text.replace('\xa0', ' ')
+        
+        # Parse the complex single-line format
+        # Pattern: "montag, mittwoch, donnerstag: 8:00 uhr – 16:00 uhrdienstag und freitag: 8:00 uhr – 17:00 uhrsamstag: 10:00 uhr – 13:00 uhr"
+        
+        # Split by day patterns that end with "uhr" followed by a lowercase letter (next day)
+        day_segments = re.split(r'uhr(?=[a-zäöüß])', opening_text)
+        
+        # Day patterns mapping
+        day_patterns = {
+            'montag': ['montag', 'mo'],
+            'dienstag': ['dienstag', 'di'],
+            'mittwoch': ['mittwoch', 'mi'],
+            'donnerstag': ['donnerstag', 'do'],
+            'freitag': ['freitag', 'fr'],
+            'samstag': ['samstag', 'sa'],
+            'sonntag': ['sonntag', 'so']
+        }
+        
+        for segment in day_segments:
+            segment = segment.strip()
+            if not segment:
+                continue
+                
+            print(f"Processing segment: {segment}")
+            
+            # Look for day patterns with times
+            # Pattern: "montag, mittwoch, donnerstag: 8:00 uhr – 16:00"
+            day_time_pattern = r'((?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag)(?:\s*,\s*(?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag))*(?:\s+und\s+(?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag))?)\s*:\s*(\d{1,2}):(\d{2})\s*uhr\s*[–-]\s*(\d{1,2}):(\d{2})'
+            
+            day_match = re.search(day_time_pattern, segment)
+            if day_match:
+                days_str = day_match.group(1)
+                start_hour = day_match.group(2)
+                start_min = day_match.group(3)
+                end_hour = day_match.group(4)
+                end_min = day_match.group(5)
+                
+                time_str = f"{start_hour}:{start_min} - {end_hour}:{end_min}"
+                
+                # Parse days (handle comma-separated and "und")
+                days_str = days_str.replace(' und ', ', ')
+                days = [day.strip() for day in days_str.split(',')]
+                
+                for day in days:
+                    day = day.strip()
+                    if day in day_patterns:
+                        opening_hours[day] = time_str
+                        print(f"Assigned {day}: {time_str}")
+        
+        # If we found opening hours in single-line format, return them
+        if opening_hours:
+            print("=== END DEBUG ===")
+            return opening_hours
+    
     # Look for opening hours keywords in full text
     opening_keywords = [
         'öffnungszeiten', 'opening hours', 'geschäftszeiten', 'servicezeiten',
@@ -318,66 +389,6 @@ def extract_opening_hours(soup):
         footer_elements = soup.find_all(['footer', '.footer', '#footer', '.contact', '.kontakt'])
         for element in footer_elements:
             relevant_sections.extend(element.get_text().lower().split('\n'))
-    
-    # NEW: Handle single-line opening hours format like the Bestattungshaus Schweitzer
-    # "Bürozeiten:Montag, Mittwoch, Donnerstag: 8:00 Uhr – 16:00 UhrDienstag und Freitag: 8:00 Uhr – 17:00 UhrSamstag: 10:00 Uhr – 13:00 Uhr"
-    full_text_lower = full_text.lower()
-    
-    # Normalize non-breaking spaces (\xa0) to regular spaces
-    full_text_normalized = full_text_lower.replace('\xa0', ' ')
-    
-    # Look for the specific single-line pattern
-    single_line_pattern = r'bürozeiten:[\s\xa0]*(.*?)(?:sowie|$)'
-    single_line_match = re.search(single_line_pattern, full_text_normalized)
-    
-    if single_line_match:
-        opening_text = single_line_match.group(1)
-        print(f"Found single-line opening hours: {opening_text}")
-        
-        # Normalize the opening text as well
-        opening_text = opening_text.replace('\xa0', ' ')
-        
-        # Parse the complex single-line format
-        # Pattern: "montag, mittwoch, donnerstag: 8:00 uhr – 16:00 uhrdienstag und freitag: 8:00 uhr – 17:00 uhrsamstag: 10:00 uhr – 13:00 uhr"
-        
-        # Split by day patterns that end with "uhr" followed by a capital letter (next day)
-        day_segments = re.split(r'uhr(?=[a-zäöüß])', opening_text)
-        
-        for segment in day_segments:
-            segment = segment.strip()
-            if not segment:
-                continue
-                
-            print(f"Processing segment: {segment}")
-            
-            # Look for day patterns with times
-            # Pattern: "montag, mittwoch, donnerstag: 8:00 uhr – 16:00"
-            day_time_pattern = r'((?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag)(?:\s*,\s*(?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag))*(?:\s+und\s+(?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag))?)\s*:\s*(\d{1,2}):(\d{2})\s*uhr\s*[–-]\s*(\d{1,2}):(\d{2})'
-            
-            day_match = re.search(day_time_pattern, segment)
-            if day_match:
-                days_str = day_match.group(1)
-                start_hour = day_match.group(2)
-                start_min = day_match.group(3)
-                end_hour = day_match.group(4)
-                end_min = day_match.group(5)
-                
-                time_str = f"{start_hour}:{start_min} - {end_hour}:{end_min}"
-                
-                # Parse days (handle comma-separated and "und")
-                days_str = days_str.replace(' und ', ', ')
-                days = [day.strip() for day in days_str.split(',')]
-                
-                for day in days:
-                    day = day.strip()
-                    if day in day_patterns:
-                        opening_hours[day] = time_str
-                        print(f"Assigned {day}: {time_str}")
-        
-        # If we found opening hours in single-line format, return them
-        if opening_hours:
-            print("=== END DEBUG ===")
-            return opening_hours
     
     # Parse opening hours from relevant sections
     for line in relevant_sections:
