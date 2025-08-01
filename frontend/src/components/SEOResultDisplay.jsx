@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Copy, CheckCircle, Globe, Calendar, Building, Clock, Users } from 'lucide-react';
+import { Copy, CheckCircle, Globe, Calendar, Building, Users } from 'lucide-react';
 
 const SEOResultDisplay = ({ result }) => {
   const [copiedField, setCopiedField] = useState('');
@@ -147,37 +147,7 @@ const SEOResultDisplay = ({ result }) => {
         </Card>
       )}
 
-      {/* Opening Hours */}
-      {result.opening_hours && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-lg">
-              <Clock className="h-5 w-5" />
-              <span>Öffnungszeiten</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Textarea
-              value={result.opening_hours}
-              readOnly
-              className="min-h-[100px]"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => copyToClipboard(result.opening_hours, 'hours')}
-              className="flex items-center space-x-2"
-            >
-              {copiedField === 'hours' ? (
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-              <span>{copiedField === 'hours' ? 'Kopiert!' : 'Kopieren'}</span>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* Company Info */}
       {result.company_info && (
@@ -221,7 +191,6 @@ const SEOResultDisplay = ({ result }) => {
                 result.short_description ? `Kurzbeschreibung:\n${result.short_description}` : '',
                 result.long_description ? `Langbeschreibung:\n${result.long_description}` : '',
                 result.keywords ? `Keywords:\n${result.keywords}` : '',
-                result.opening_hours ? `Öffnungszeiten:\n${result.opening_hours}` : '',
                 result.company_info ? `Impressum:\n${result.company_info}` : ''
               ].filter(Boolean).join('\n\n');
               copyToClipboard(allText, 'all');
